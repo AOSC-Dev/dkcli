@@ -5,7 +5,8 @@ use std::{path::PathBuf, process::exit, sync::Arc, time::Duration};
 use anyhow::{bail, Context, Result};
 use indicatif::{HumanBytes, MultiProgress, ProgressBar, ProgressStyle};
 use inquire::{
-    required, validator::Validation, Confirm, Password, PasswordDisplayMode, Select, Text,
+    required, validator::Validation, Confirm, CustomType, Password, PasswordDisplayMode, Select,
+    Text,
 };
 use log::{debug, info, LevelFilter};
 use parser::list_zoneinfo;
@@ -30,6 +31,7 @@ struct InstallConfig {
     target_part: DkPartition,
     efi_disk: Option<DkPartition>,
     locale: String,
+    swapfile_size: f64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -153,7 +155,6 @@ impl Dbus {
             DbusMethod::ListPartitions(dev) => proxy.get_list_partitions(dev).await?,
             DbusMethod::ListDevice => proxy.get_list_devices().await?,
             DbusMethod::GetRecommendSwapSize => proxy.get_recommend_swap_size().await?,
-            DbusMethod::GetMemory => proxy.get_memory().await?,
             DbusMethod::CancelInstall => proxy.cancel_install().await?,
             DbusMethod::DiskIsRightCombo(dev) => proxy.disk_is_right_combo(dev).await?,
             DbusMethod::GetAllEspPartitions => proxy.get_all_esp_partitions().await?,
@@ -176,7 +177,6 @@ enum DbusMethod<'a> {
     ListPartitions(&'a str),
     ListDevice,
     GetRecommendSwapSize,
-    GetMemory,
     CancelInstall,
     DiskIsRightCombo(&'a str),
     GetAllEspPartitions,
@@ -505,6 +505,27 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         .with_default(false)
         .prompt()?;
 
+    let mut recommend_swap_file_size = runtime
+        .block_on(Dbus::run(&dk_client, DbusMethod::GetRecommendSwapSize))?
+        .data
+        .as_f64()
+        .unwrap_or(0.0);
+
+    if recommend_swap_file_size > 32.0 * 1024.0 * 1024.0 * 1024.0 {
+        recommend_swap_file_size = 32.0 * 1024.0 * 1024.0 * 1024.0
+    }
+
+    let swap_size = CustomType::<f64>::new("Swap file size? (GiB)")
+        .with_default(
+            format!(
+                "{:.2}",
+                recommend_swap_file_size as f64 / 1024.0 / 1024.0 / 1024.0
+            )
+            .parse::<f64>()
+            .unwrap(),
+        )
+        .prompt()?;
+
     Ok(InstallConfig {
         offline_install: is_offline_install,
         variant,
@@ -517,6 +538,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         target_part: partition.into(),
         efi_disk: efi.map(|x| x.into()),
         locale: locale.data.clone(),
+        swapfile_size: swap_size,
     })
 }
 
@@ -644,7 +666,14 @@ async fn set_config(proxy: &DeploykitProxy<'_>, config: &InstallConfig) -> Resul
     )
     .await?;
 
-    let swap_config = "\"Disable\"".to_string();
+    let swap_config = if config.swapfile_size == 0.0 {
+        "\"Disable\"".to_string()
+    } else {
+        serde_json::json!({
+            "Custom": (config.swapfile_size * 1024.0 * 1024.0 * 1024.0) as u64
+        })
+        .to_string()
+    };
 
     Dbus::run(proxy, DbusMethod::SetConfig("swapfile", &swap_config)).await?;
 
