@@ -512,7 +512,19 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         .unwrap_or(0.0);
 
     if recommend_swap_file_size > 32.0 * 1024.0 * 1024.0 * 1024.0 {
-        recommend_swap_file_size = 32.0 * 1024.0 * 1024.0 * 1024.0
+        recommend_swap_file_size = 32.0 * 1024.0 * 1024.0 * 1024.0;
+    }
+
+    if is_offline_install {
+        let size = recommend_swap_file_size + cand.inst_size as f64 * 1.25;
+        if (partition.size as f64) < size {
+            recommend_swap_file_size = (recommend_swap_file_size - (partition.size as f64 - size)) / 1.25;
+        }
+    } else {
+        let size = recommend_swap_file_size + cand.inst_size as f64 + cand.download_size as f64;
+        if (partition.size as f64) < size {
+            recommend_swap_file_size = (recommend_swap_file_size - (partition.size as f64 - size)) / 1.25;
+        }
     }
 
     let swap_size = CustomType::<f64>::new("Swap file size? (GiB)")
