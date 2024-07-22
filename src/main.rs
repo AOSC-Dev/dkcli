@@ -306,10 +306,10 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         })
         .collect::<Vec<_>>();
 
-    println!("List of Devices:");
+    info!("List of Devices:");
 
     for i in &devices {
-        println!("{} {} ({})", i.model, i.path, HumanBytes(i.size));
+        info!("{} {} ({})", i.model, i.path, HumanBytes(i.size));
     }
 
     if devices.is_empty() {
