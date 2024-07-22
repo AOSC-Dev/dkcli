@@ -150,19 +150,13 @@ impl Dbus {
             DbusMethod::GetProgress => proxy.get_progress().await?,
             DbusMethod::StartInstall => proxy.start_install().await?,
             DbusMethod::GetAutoPartitionProgress => proxy.get_auto_partition_progress().await?,
-            DbusMethod::FindEspPartition(dev) => proxy.find_esp_partition(dev).await?,
             DbusMethod::ListPartitions(dev) => proxy.get_list_partitions(dev).await?,
             DbusMethod::ListDevice => proxy.get_list_devices().await?,
             DbusMethod::GetRecommendSwapSize => proxy.get_recommend_swap_size().await?,
             DbusMethod::GetMemory => proxy.get_memory().await?,
             DbusMethod::CancelInstall => proxy.cancel_install().await?,
-            DbusMethod::ResetConfig => proxy.reset_config().await?,
             DbusMethod::DiskIsRightCombo(dev) => proxy.disk_is_right_combo(dev).await?,
-            DbusMethod::Ping => proxy.ping().await?,
             DbusMethod::GetAllEspPartitions => proxy.get_all_esp_partitions().await?,
-            DbusMethod::ResetProgressStatus => proxy.reset_progress_status().await?,
-            DbusMethod::SyncDisk => proxy.sync_disk().await?,
-            DbusMethod::SyncAndReboot => proxy.sync_and_reboot().await?,
             DbusMethod::IsLvmDevice(dev) => proxy.is_lvm_device(dev).await?,
             DbusMethod::IsEFI => proxy.is_efi().await?,
         };
@@ -179,19 +173,13 @@ enum DbusMethod<'a> {
     GetProgress,
     StartInstall,
     GetAutoPartitionProgress,
-    FindEspPartition(&'a str),
     ListPartitions(&'a str),
     ListDevice,
     GetRecommendSwapSize,
     GetMemory,
     CancelInstall,
-    ResetConfig,
     DiskIsRightCombo(&'a str),
-    Ping,
     GetAllEspPartitions,
-    ResetProgressStatus,
-    SyncDisk,
-    SyncAndReboot,
     IsLvmDevice(&'a str),
     IsEFI,
 }
@@ -336,6 +324,13 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
             .collect::<Vec<_>>(),
     )
     .prompt()?;
+
+    let disk_is_right_combo =
+        runtime.block_on(Dbus::run(&dk_client, DbusMethod::DiskIsRightCombo(&device)));
+
+    if let Err(e) = disk_is_right_combo {
+        bail!("{e}");
+    }
 
     let auto_partition = Confirm::new("Auto Partition?")
         .with_default(false)
