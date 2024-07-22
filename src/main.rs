@@ -337,9 +337,10 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
     )
     .prompt()?;
 
-    let partitions = runtime
-        .block_on(get_partitions(&dk_client, &device))?
-        .into_iter()
+    let partitions = runtime.block_on(get_partitions(&dk_client, &device))?;
+
+    let install_parts_list = partitions
+        .iter()
         .filter(|x| {
             if is_offline_install {
                 x.size as f64 > cand.inst_size as f64 * 1.25
@@ -349,7 +350,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         })
         .collect::<Vec<_>>();
 
-    if partitions.is_empty() {
+    if install_parts_list.is_empty() {
         bail!("conform to install AOSC OS Partitions is empty");
     }
 
@@ -373,7 +374,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
 
     let partition = Select::new(
         "Select system target partition",
-        partitions
+        install_parts_list
             .iter()
             .filter_map(|x| x.path.as_ref().map(|x| x.to_string_lossy().to_string()))
             .collect::<Vec<_>>(),
