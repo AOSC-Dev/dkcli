@@ -1,6 +1,6 @@
 mod parser;
 
-use std::{borrow::Cow, path::PathBuf, process::exit, sync::Arc, time::Duration};
+use std::{path::PathBuf, process::exit, sync::Arc, time::Duration};
 
 use anyhow::{bail, Context, Result};
 use indicatif::{HumanBytes, MultiProgress, ProgressBar, ProgressStyle};
@@ -269,6 +269,8 @@ async fn get_progress(dk_client: &DeploykitProxy<'_>) -> Result<()> {
                 bail!("{e}");
             }
             ProgressStatus::Finish => {
+                main_pb.finish_and_clear();
+                second_pb.finish_and_clear();
                 info!("Finished");
                 return Ok(());
             }
