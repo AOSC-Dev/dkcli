@@ -304,7 +304,19 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         .unwrap()
         .to_owned();
 
-    let devices = runtime.block_on(get_devices(&dk_client))?;
+    let cand = candidate_sqfs(&variant)?;
+
+    let devices = runtime
+        .block_on(get_devices(&dk_client))?
+        .into_iter()
+        .filter(|x| {
+            if is_offline_install {
+                x.size as f64 > cand.inst_size as f64 * 1.25
+            } else {
+                x.size > cand.inst_size + cand.download_size
+            }
+        })
+        .collect::<Vec<_>>();
 
     println!("List of Devices:");
 
@@ -312,13 +324,34 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         println!("{} {} ({})", i.model, i.path, HumanBytes(i.size));
     }
 
+    if devices.is_empty() {
+        bail!("conform to install AOSC OS Device is empty");
+    }
+
     let device = Select::new(
         "Select Device",
-        devices.iter().map(|x| x.path.clone()).collect::<Vec<_>>(),
+        devices
+            .iter()
+            .map(|x| x.path.to_string())
+            .collect::<Vec<_>>(),
     )
     .prompt()?;
 
-    let partitions = runtime.block_on(get_partitions(&dk_client, &device))?;
+    let partitions = runtime
+        .block_on(get_partitions(&dk_client, &device))?
+        .into_iter()
+        .filter(|x| {
+            if is_offline_install {
+                x.size as f64 > cand.inst_size as f64 * 1.25
+            } else {
+                x.size > cand.inst_size + cand.download_size
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if partitions.is_empty() {
+        bail!("conform to install AOSC OS Partitions is empty");
+    }
 
     let is_efi = runtime
         .block_on(Dbus::run(&dk_client, DbusMethod::IsEFI))?
@@ -522,13 +555,7 @@ async fn get_partitions(dk_client: &DeploykitProxy<'_>, device: &str) -> Result<
 
 async fn set_config(proxy: &DeploykitProxy<'_>, config: &InstallConfig) -> Result<()> {
     let variant = &config.variant;
-    let mut sqfs = variant
-        .squashfs
-        .iter()
-        .filter(|x| get_arch_name().map(|arch| arch == x.arch).unwrap_or(false))
-        .collect::<Vec<_>>();
-    sqfs.sort_unstable_by(|a, b| b.data.cmp(&a.data));
-    let sqfs = sqfs.first().context("Squashfs has no entry!")?;
+    let sqfs = candidate_sqfs(variant)?;
     let url = format!("https://releases.aosc.io/{}", sqfs.path);
 
     if !config.offline_install {
@@ -604,6 +631,18 @@ async fn set_config(proxy: &DeploykitProxy<'_>, config: &InstallConfig) -> Resul
     }
 
     Ok(())
+}
+
+fn candidate_sqfs(variant: &Variant) -> Result<&Squashfs> {
+    let mut sqfs = variant
+        .squashfs
+        .iter()
+        .filter(|x| get_arch_name().map(|arch| arch == x.arch).unwrap_or(false))
+        .collect::<Vec<_>>();
+    sqfs.sort_unstable_by(|a, b| b.data.cmp(&a.data));
+    let sqfs = sqfs.first().context("Squashfs has no entry!")?;
+
+    Ok(sqfs)
 }
 
 // AOSC OS specific architecture mapping for ppc64
