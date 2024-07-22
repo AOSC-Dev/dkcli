@@ -7,7 +7,7 @@ use indicatif::{HumanBytes, MultiProgress, ProgressBar, ProgressStyle};
 use inquire::{
     required, validator::Validation, Confirm, Password, PasswordDisplayMode, Select, Text,
 };
-use log::{info, LevelFilter};
+use log::{debug, info, LevelFilter};
 use parser::list_zoneinfo;
 use reqwest::ClientBuilder;
 use serde::{Deserialize, Serialize};
@@ -226,7 +226,7 @@ fn main() -> Result<()> {
     let dc = dk_client.clone();
 
     ctrlc::set_handler(move || {
-        info!("Ctrlc is press.");
+        info!("Install is canceled.");
         let rt = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
@@ -337,96 +337,107 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
     )
     .prompt()?;
 
-    let partitions = runtime.block_on(get_partitions(&dk_client, &device))?;
+    let auto_partition = Confirm::new("Auto Partition?")
+        .with_default(false)
+        .prompt()?;
 
-    let install_parts_list = partitions
-        .iter()
-        .filter(|x| {
-            if is_offline_install {
-                x.size as f64 > cand.inst_size as f64 * 1.25
-            } else {
-                x.size > cand.inst_size + cand.download_size
-            }
-        })
-        .collect::<Vec<_>>();
+    let (partition, efi) = if auto_partition {
+        runtime.block_on(Dbus::run(&dk_client, DbusMethod::AutoPartition(&device)))?;
+        runtime.block_on(get_auto_partition_progress(&dk_client))?
+    } else {
+        let partitions = runtime.block_on(get_partitions(&dk_client, &device))?;
 
-    if install_parts_list.is_empty() {
-        bail!("conform to install AOSC OS Partitions is empty");
-    }
-
-    let is_efi = runtime
-        .block_on(Dbus::run(&dk_client, DbusMethod::IsEFI))?
-        .data
-        .as_bool()
-        .context("Could not get is efi")?;
-
-    info!("Device is{}EFI", if is_efi { " " } else { " not " });
-
-    let is_lvm_device = runtime
-        .block_on(Dbus::run(&dk_client, DbusMethod::IsLvmDevice(&device)))?
-        .data
-        .as_bool()
-        .context("Could not get is lvm device")?;
-
-    if is_lvm_device {
-        bail!("Installer unsupport LVM Device.");
-    }
-
-    let partition = Select::new(
-        "Select system target partition",
-        install_parts_list
+        let install_parts_list = partitions
             .iter()
-            .filter_map(|x| x.path.as_ref().map(|x| x.to_string_lossy().to_string()))
-            .collect::<Vec<_>>(),
-    )
-    .prompt()?;
+            .filter(|x| {
+                if is_offline_install {
+                    x.size as f64 > cand.inst_size as f64 * 1.25
+                } else {
+                    x.size > cand.inst_size + cand.download_size
+                }
+            })
+            .collect::<Vec<_>>();
 
-    let partition = partitions
-        .iter()
-        .find(|x| {
-            x.path
-                .as_ref()
-                .map(|x| x.to_string_lossy() == partition)
-                .unwrap_or(false)
-        })
-        .unwrap()
-        .to_owned();
-
-    let mut efi = None;
-
-    if is_efi {
-        let efi_parts = runtime
-            .block_on(Dbus::run(&dk_client, DbusMethod::GetAllEspPartitions))?
-            .data;
-
-        let efi_parts: Vec<DkPartition> = serde_json::from_value(efi_parts)?;
-
-        if efi_parts.is_empty() {
-            bail!("No ESP partition found on device");
+        if install_parts_list.is_empty() {
+            bail!("conform to install AOSC OS Partitions is empty");
         }
 
-        let efi_part = Select::new(
-            "Select ESP Partition",
-            efi_parts
+        let is_efi = runtime
+            .block_on(Dbus::run(&dk_client, DbusMethod::IsEFI))?
+            .data
+            .as_bool()
+            .context("Could not get is efi")?;
+
+        info!("Device is{}EFI", if is_efi { " " } else { " not " });
+
+        let is_lvm_device = runtime
+            .block_on(Dbus::run(&dk_client, DbusMethod::IsLvmDevice(&device)))?
+            .data
+            .as_bool()
+            .context("Could not get is lvm device")?;
+
+        if is_lvm_device {
+            bail!("Installer unsupport LVM Device.");
+        }
+
+        let partition = Select::new(
+            "Select system target partition",
+            install_parts_list
                 .iter()
                 .filter_map(|x| x.path.as_ref().map(|x| x.to_string_lossy().to_string()))
                 .collect::<Vec<_>>(),
         )
         .prompt()?;
 
-        let efi_part = partitions
+        let partition = partitions
             .iter()
             .find(|x| {
                 x.path
                     .as_ref()
-                    .map(|x| x.to_string_lossy() == efi_part)
+                    .map(|x| x.to_string_lossy() == partition)
                     .unwrap_or(false)
             })
             .unwrap()
             .to_owned();
 
-        efi = Some(efi_part);
-    }
+        let mut efi = None;
+
+        if is_efi {
+            let efi_parts = runtime
+                .block_on(Dbus::run(&dk_client, DbusMethod::GetAllEspPartitions))?
+                .data;
+
+            let efi_parts: Vec<DkPartition> = serde_json::from_value(efi_parts)?;
+
+            if efi_parts.is_empty() {
+                bail!("No ESP partition found on device");
+            }
+
+            let efi_part = Select::new(
+                "Select ESP Partition",
+                efi_parts
+                    .iter()
+                    .filter_map(|x| x.path.as_ref().map(|x| x.to_string_lossy().to_string()))
+                    .collect::<Vec<_>>(),
+            )
+            .prompt()?;
+
+            let efi_part = partitions
+                .iter()
+                .find(|x| {
+                    x.path
+                        .as_ref()
+                        .map(|x| x.to_string_lossy() == efi_part)
+                        .unwrap_or(false)
+                })
+                .unwrap()
+                .to_owned();
+
+            efi = Some(efi_part);
+        }
+
+        (partition, efi)
+    };
 
     let fullname = Text::new("Your name?")
         .with_validator(required!())
@@ -512,6 +523,39 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         efi_disk: efi.map(|x| x.into()),
         locale: locale.data.clone(),
     })
+}
+
+async fn get_auto_partition_progress(
+    proxy: &DeploykitProxy<'_>,
+) -> Result<(DkPartition, Option<DkPartition>)> {
+    let pb = ProgressBar::new_spinner();
+    loop {
+        let progress = Dbus::run(proxy, DbusMethod::GetAutoPartitionProgress).await?;
+        let data: AutoPartitionProgress = serde_json::from_value(progress.data)?;
+
+        match data {
+            AutoPartitionProgress::Finish { ref res } => match res {
+                Err(v) => {
+                    pb.finish_and_clear();
+                    bail!("{v}");
+                }
+                Ok(value) => {
+                    pb.finish_and_clear();
+                    let (efi, p): (Option<DkPartition>, DkPartition) =
+                        serde_json::from_value(value.clone())?;
+                    return Ok((p, efi));
+                }
+            },
+            AutoPartitionProgress::Working => {
+                pb.set_message("Working");
+            }
+            _ => {
+                debug!("Progress: {:?}", data);
+            }
+        }
+
+        sleep(Duration::from_millis(100)).await;
+    }
 }
 
 async fn create_dbus_client() -> Result<DeploykitProxy<'static>> {
@@ -604,15 +648,6 @@ async fn set_config(proxy: &DeploykitProxy<'_>, config: &InstallConfig) -> Resul
         DbusMethod::SetConfig("rtc_as_localtime", &(config.rtc_as_localtime).to_string()),
     )
     .await?;
-
-    // let swap_config = if config.swapfile.size == 0.0 {
-    //     "\"Disable\"".to_string()
-    // } else {
-    //     serde_json::json!({
-    //         "Custom": (config.swapfile.size * 1024.0 * 1024.0 * 1024.0) as u64,
-    //     })
-    //     .to_string()
-    // };
 
     let swap_config = "\"Disable\"".to_string();
 
