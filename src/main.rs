@@ -1,8 +1,9 @@
 mod parser;
 
-use std::{path::PathBuf, process::exit, sync::Arc, time::Duration};
+use std::{fs, path::PathBuf, process::exit, sync::Arc, time::Duration};
 
 use anyhow::{bail, Context, Result};
+use clap::Parser;
 use indicatif::{HumanBytes, MultiProgress, ProgressBar, ProgressStyle};
 use inquire::{
     required, validator::Validation, Confirm, CustomType, Password, PasswordDisplayMode, Select,
@@ -19,10 +20,17 @@ use zbus::{proxy, Connection, Result as zResult};
 
 const LOCALE_LIST: &str = include_str!("../lang_select.json");
 
+#[derive(Debug, Parser)]
+struct Args {
+    /// Set install config path
+    #[clap(short, long)]
+    config: Option<PathBuf>,
+}
+
 struct InstallConfig {
     offline_install: bool,
     variant: Variant,
-    fullname: String,
+    fullname: Option<String>,
     user: String,
     password: String,
     hostname: String,
@@ -32,6 +40,22 @@ struct InstallConfig {
     efi_disk: Option<DkPartition>,
     locale: String,
     swapfile_size: f64,
+}
+
+#[derive(Debug, Deserialize)]
+struct UserConfig {
+    offline_install: bool,
+    variant: String,
+    fullname: Option<String>,
+    user: String,
+    password: String,
+    hostname: String,
+    timezone: String,
+    rtc_as_localtime: bool,
+    target_part: String,
+    efi_disk: Option<String>,
+    locale: String,
+    swapfile_size: Option<f64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -198,6 +222,8 @@ impl TryFrom<String> for Dbus {
 }
 
 fn main() -> Result<()> {
+    let args = Args::parse();
+
     TermLogger::init(
         LevelFilter::Debug,
         Config::default(),
@@ -225,7 +251,15 @@ fn main() -> Result<()> {
     })
     .expect("Failed to set ctrlc handler");
 
-    let config = inquire(&rt, &dk_client)?;
+    let config = if let Some(config_path) = args.config {
+        info!("Install from config: {}", config_path.display());
+        let f = fs::read_to_string(config_path)?;
+        let config: UserConfig = toml::from_str(&f)?;
+        from_config(&rt, config, &dk_client)?
+    } else {
+        inquire(&rt, &dk_client)?
+    };
+
     rt.block_on(set_config(&dk_client, &config))?;
     rt.block_on(Dbus::run(&dk_client, DbusMethod::StartInstall))?;
     rt.block_on(get_progress(&dk_client))?;
@@ -268,6 +302,84 @@ async fn get_progress(dk_client: &DeploykitProxy<'_>) -> Result<()> {
     }
 }
 
+fn from_config(
+    runtime: &Runtime,
+    config: UserConfig,
+    dk_client: &DeploykitProxy<'_>,
+) -> Result<InstallConfig> {
+    let recipe = runtime.block_on(get_recipe(config.offline_install))?;
+    let variant = get_variant(recipe, &config.variant);
+    let cand = candidate_sqfs(&variant)?;
+
+    let devices = runtime
+        .block_on(get_devices(&dk_client))?
+        .into_iter()
+        .filter(|x| {
+            if config.offline_install {
+                x.size as f64 > cand.inst_size as f64 * 1.25
+            } else {
+                x.size > cand.inst_size + cand.download_size
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let mut target_part = None;
+    let mut efi_disk = None;
+
+    let is_efi = runtime
+        .block_on(Dbus::run(&dk_client, DbusMethod::IsEFI))?
+        .data
+        .as_bool()
+        .context("Could not get is efi")?;
+
+    for d in devices {
+        let partitions = runtime.block_on(get_partitions(&dk_client, &d.path))?;
+        if let Some(v) = partitions.iter().find(|x| {
+            x.path
+                .as_ref()
+                .is_some_and(|x| x.display().to_string() == config.target_part)
+        }) {
+            target_part = Some(v.to_owned());
+        }
+
+        if is_efi {
+            if config.efi_disk.is_none() {
+                bail!("efi_disk field is not set.");
+            }
+            if let Some(v) = partitions.iter().find(|x| {
+                x.path
+                    .as_ref()
+                    .is_some_and(|x| x.display().to_string() == *config.efi_disk.as_ref().unwrap())
+            }) {
+                efi_disk = Some(v.to_owned());
+            }
+        }
+    }
+
+    if target_part.is_none() {
+        bail!("Cannot find target partition");
+    }
+
+    if efi_disk.is_none() && is_efi {
+        bail!("Cannot find efi disk");
+    }
+
+    Ok(InstallConfig {
+        offline_install: config.offline_install,
+        variant,
+        fullname: config.fullname,
+        user: config.user,
+        password: config.password,
+        hostname: config.hostname,
+        timezone: config.timezone,
+        rtc_as_localtime: config.rtc_as_localtime,
+        target_part: target_part.unwrap(),
+        efi_disk,
+        locale: config.locale,
+        swapfile_size: config.swapfile_size.unwrap_or(0.0),
+    })
+}
+
 fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallConfig> {
     let is_offline_install = Confirm::new("Install AOSC OS on offline mode?")
         .with_default(true)
@@ -285,12 +397,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
     )
     .prompt()?;
 
-    let variant = recipe
-        .variants
-        .iter()
-        .find(|x| x.name == variant)
-        .unwrap()
-        .to_owned();
+    let variant = get_variant(recipe, &variant);
 
     let cand = candidate_sqfs(&variant)?;
 
@@ -384,16 +491,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         )
         .prompt()?;
 
-        let partition = partitions
-            .iter()
-            .find(|x| {
-                x.path
-                    .as_ref()
-                    .map(|x| x.to_string_lossy() == partition)
-                    .unwrap_or(false)
-            })
-            .unwrap()
-            .to_owned();
+        let partition = get_partition(&partitions, &partition);
 
         let mut efi = None;
 
@@ -417,16 +515,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
             )
             .prompt()?;
 
-            let efi_part = partitions
-                .iter()
-                .find(|x| {
-                    x.path
-                        .as_ref()
-                        .map(|x| x.to_string_lossy() == efi_part)
-                        .unwrap_or(false)
-                })
-                .unwrap()
-                .to_owned();
+            let efi_part = get_partition(&partitions, &efi_part);
 
             efi = Some(efi_part);
         }
@@ -518,12 +607,14 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
     if is_offline_install {
         let size = recommend_swap_file_size + cand.inst_size as f64 * 1.25;
         if (partition.size as f64) < size {
-            recommend_swap_file_size = (recommend_swap_file_size - (partition.size as f64 - size)) / 1.25;
+            recommend_swap_file_size =
+                (recommend_swap_file_size - (partition.size as f64 - size)) / 1.25;
         }
     } else {
         let size = recommend_swap_file_size + cand.inst_size as f64 + cand.download_size as f64;
         if (partition.size as f64) < size {
-            recommend_swap_file_size = (recommend_swap_file_size - (partition.size as f64 - size)) / 1.25;
+            recommend_swap_file_size =
+                (recommend_swap_file_size - (partition.size as f64 - size)) / 1.25;
         }
     }
 
@@ -541,7 +632,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
     Ok(InstallConfig {
         offline_install: is_offline_install,
         variant,
-        fullname,
+        fullname: Some(fullname),
         user: username,
         password,
         hostname,
@@ -552,6 +643,32 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         locale: locale.data.clone(),
         swapfile_size: swap_size,
     })
+}
+
+fn get_partition(partitions: &[DkPartition], partition: &str) -> DkPartition {
+    let partition = partitions
+        .iter()
+        .find(|x| {
+            x.path
+                .as_ref()
+                .map(|x| x.to_string_lossy() == partition)
+                .unwrap_or(false)
+        })
+        .unwrap()
+        .to_owned();
+
+    partition
+}
+
+fn get_variant(recipe: Recipe, variant: &str) -> Variant {
+    let variant = recipe
+        .variants
+        .iter()
+        .find(|x| x.name == variant)
+        .unwrap()
+        .to_owned();
+
+    variant
 }
 
 async fn get_auto_partition_progress(

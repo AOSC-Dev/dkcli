@@ -16,3 +16,5 @@ simplelog = "0.12.2"
 log = "0.4"
 nom = "7"
 ctrlc = "3.4.4"
+clap = { version = "4.5", features = ["derive"] }
+toml = "0.8"

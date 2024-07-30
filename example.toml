@@ -1,0 +1,24 @@
+# Install AOSC OS use offline mode
+offline_install = true
+# Set RTC as Localtime
+rtc_as_localtime = false
+# Install AOSC OS variant
+variant = "Base"
+# Set user full name (optional)
+fullname = "AOSC OS User"
+# Set user name
+user = "aosc"
+# Set user password
+password = "aosc"
+# Set host name
+hostname = "aosc"
+# timezone
+timezone = "Asia/Shanghai"
+# AOSC OS install target part path
+target_part = "/dev/sda2"
+# AOSC OS install EFI part path (if you are using UEFI boot)
+efi_disk = "/dev/sda1"
+# Locale
+locale = "zh_CN.UTF-8"
+# swap size (GiB, optional)
+swapfile_size =  4
