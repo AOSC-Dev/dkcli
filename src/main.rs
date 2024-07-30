@@ -245,7 +245,7 @@ fn main() -> Result<()> {
             .enable_all()
             .build()
             .unwrap();
-        rt.block_on(Dbus::run(&*dc, DbusMethod::CancelInstall))
+        rt.block_on(Dbus::run(&dc, DbusMethod::CancelInstall))
             .unwrap();
         exit(1);
     })
@@ -312,7 +312,7 @@ fn from_config(
     let cand = candidate_sqfs(&variant)?;
 
     let devices = runtime
-        .block_on(get_devices(&dk_client))?
+        .block_on(get_devices(dk_client))?
         .into_iter()
         .filter(|x| {
             if config.offline_install {
@@ -327,13 +327,13 @@ fn from_config(
     let mut efi_disk = None;
 
     let is_efi = runtime
-        .block_on(Dbus::run(&dk_client, DbusMethod::IsEFI))?
+        .block_on(Dbus::run(dk_client, DbusMethod::IsEFI))?
         .data
         .as_bool()
         .context("Could not get is efi")?;
 
     for d in devices {
-        let partitions = runtime.block_on(get_partitions(&dk_client, &d.path))?;
+        let partitions = runtime.block_on(get_partitions(dk_client, &d.path))?;
         if let Some(v) = partitions.iter().find(|x| {
             x.path
                 .as_ref()
@@ -402,7 +402,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
     let cand = candidate_sqfs(&variant)?;
 
     let devices = runtime
-        .block_on(get_devices(&dk_client))?
+        .block_on(get_devices(dk_client))?
         .into_iter()
         .filter(|x| {
             if is_offline_install {
@@ -433,7 +433,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
     .prompt()?;
 
     let disk_is_right_combo =
-        runtime.block_on(Dbus::run(&dk_client, DbusMethod::DiskIsRightCombo(&device)));
+        runtime.block_on(Dbus::run(dk_client, DbusMethod::DiskIsRightCombo(&device)));
 
     if let Err(e) = disk_is_right_combo {
         bail!("{e}");
@@ -444,10 +444,10 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         .prompt()?;
 
     let (partition, efi) = if auto_partition {
-        runtime.block_on(Dbus::run(&dk_client, DbusMethod::AutoPartition(&device)))?;
-        runtime.block_on(get_auto_partition_progress(&dk_client))?
+        runtime.block_on(Dbus::run(dk_client, DbusMethod::AutoPartition(&device)))?;
+        runtime.block_on(get_auto_partition_progress(dk_client))?
     } else {
-        let partitions = runtime.block_on(get_partitions(&dk_client, &device))?;
+        let partitions = runtime.block_on(get_partitions(dk_client, &device))?;
 
         let install_parts_list = partitions
             .iter()
@@ -465,7 +465,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         }
 
         let is_efi = runtime
-            .block_on(Dbus::run(&dk_client, DbusMethod::IsEFI))?
+            .block_on(Dbus::run(dk_client, DbusMethod::IsEFI))?
             .data
             .as_bool()
             .context("Could not get is efi")?;
@@ -473,7 +473,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         info!("Device is{}EFI", if is_efi { " " } else { " not " });
 
         let is_lvm_device = runtime
-            .block_on(Dbus::run(&dk_client, DbusMethod::IsLvmDevice(&device)))?
+            .block_on(Dbus::run(dk_client, DbusMethod::IsLvmDevice(&device)))?
             .data
             .as_bool()
             .context("Could not get is lvm device")?;
@@ -497,7 +497,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
 
         if is_efi {
             let efi_parts = runtime
-                .block_on(Dbus::run(&dk_client, DbusMethod::GetAllEspPartitions))?
+                .block_on(Dbus::run(dk_client, DbusMethod::GetAllEspPartitions))?
                 .data;
 
             let efi_parts: Vec<DkPartition> = serde_json::from_value(efi_parts)?;
@@ -529,7 +529,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
             if input.contains(":") {
                 return Ok(Validation::Invalid("Name not allow contains ':'".into()));
             }
-            return Ok(Validation::Valid);
+            Ok(Validation::Valid)
         })
         .prompt()?;
 
@@ -552,7 +552,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
                     ));
                 }
             }
-            return Ok(Validation::Valid);
+            Ok(Validation::Valid)
         })
         .with_default(&default_username)
         .prompt()?;
@@ -586,7 +586,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
                     ));
                 }
             }
-            return Ok(Validation::Valid);
+            Ok(Validation::Valid)
         })
         .prompt()?;
 
@@ -595,7 +595,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         .prompt()?;
 
     let mut recommend_swap_file_size = runtime
-        .block_on(Dbus::run(&dk_client, DbusMethod::GetRecommendSwapSize))?
+        .block_on(Dbus::run(dk_client, DbusMethod::GetRecommendSwapSize))?
         .data
         .as_f64()
         .unwrap_or(0.0);
@@ -620,12 +620,9 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
 
     let swap_size = CustomType::<f64>::new("Swap file size? (GiB)")
         .with_default(
-            format!(
-                "{:.2}",
-                recommend_swap_file_size as f64 / 1024.0 / 1024.0 / 1024.0
-            )
-            .parse::<f64>()
-            .unwrap(),
+            format!("{:.2}", recommend_swap_file_size / 1024.0 / 1024.0 / 1024.0)
+                .parse::<f64>()
+                .unwrap(),
         )
         .prompt()?;
 
@@ -638,8 +635,8 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         hostname,
         timezone,
         rtc_as_localtime,
-        target_part: partition.into(),
-        efi_disk: efi.map(|x| x.into()),
+        target_part: partition,
+        efi_disk: efi,
         locale: locale.data.clone(),
         swapfile_size: swap_size,
     })
@@ -731,14 +728,14 @@ async fn get_recipe(offline_mode: bool) -> Result<Recipe> {
 }
 
 async fn get_devices(dk_client: &DeploykitProxy<'_>) -> Result<Vec<Device>> {
-    let devices = Dbus::run(&dk_client, DbusMethod::ListDevice).await?;
+    let devices = Dbus::run(dk_client, DbusMethod::ListDevice).await?;
     let devices: Vec<Device> = serde_json::from_value(devices.data)?;
 
     Ok(devices)
 }
 
 async fn get_partitions(dk_client: &DeploykitProxy<'_>, device: &str) -> Result<Vec<DkPartition>> {
-    let partitions = Dbus::run(&dk_client, DbusMethod::ListPartitions(device)).await?;
+    let partitions = Dbus::run(dk_client, DbusMethod::ListPartitions(device)).await?;
     let partitions = serde_json::from_value(partitions.data)?;
 
     Ok(partitions)
