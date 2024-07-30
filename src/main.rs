@@ -251,6 +251,15 @@ fn main() -> Result<()> {
     })
     .expect("Failed to set ctrlc handler");
 
+    let progress =  rt.block_on(Dbus::run(&dk_client, DbusMethod::GetProgress))?;
+    let data: ProgressStatus = serde_json::from_value(progress.data)?;
+
+    if let ProgressStatus::Working { .. } = data {
+        info!("Another install is running ...");
+        rt.block_on(get_progress(&dk_client))?;
+        return Ok(());
+    }
+
     let config = if let Some(config_path) = args.config {
         info!("Install from config: {}", config_path.display());
         let f = fs::read_to_string(config_path)?;
