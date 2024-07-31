@@ -17,7 +17,7 @@ use parser::list_zoneinfo;
 use reqwest::ClientBuilder;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use simplelog::{ColorChoice, Config, TermLogger, TerminalMode};
+use simplelog::{ColorChoice, ConfigBuilder, TermLogger, TerminalMode};
 use tokio::{runtime::Runtime, time::sleep};
 use zbus::{proxy, Connection, Result as zResult};
 
@@ -229,7 +229,9 @@ fn main() -> Result<()> {
 
     TermLogger::init(
         LevelFilter::Info,
-        Config::default(),
+        ConfigBuilder::default()
+            .add_filter_ignore_str("i18n_embed")
+            .build(),
         TerminalMode::Stderr,
         ColorChoice::Auto,
     )?;
