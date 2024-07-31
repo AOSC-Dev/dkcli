@@ -4,7 +4,7 @@ use std::{error::Error, fs, path::PathBuf, process::exit, sync::Arc, time::Durat
 
 use anyhow::{bail, Context, Result};
 use clap::Parser;
-use indicatif::{HumanBytes, MultiProgress, ProgressBar, ProgressStyle};
+use indicatif::{HumanBytes, ProgressBar, ProgressStyle};
 use inquire::{
     required, validator::Validation, Confirm, CustomType, Password, PasswordDisplayMode, Select,
     Text,
@@ -278,7 +278,7 @@ fn main() -> Result<()> {
 
 async fn get_progress(dk_client: &DeploykitProxy<'_>) -> Result<()> {
     let style = ProgressStyle::with_template(
-        "{prefix:.bold}   [{wide_bar:.cyan/blue}] {percent}%",
+        "{prefix:.bold}   [{wide_bar:.cyan/blue}] {percent}% {spinner:.green}",
     )?
     .progress_chars("#>-");
 
