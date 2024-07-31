@@ -295,7 +295,7 @@ async fn get_progress(dk_client: &DeploykitProxy<'_>) -> Result<()> {
 
     let pb = ProgressBar::new(100).with_style(style);
 
-    let steps = vec![
+    let steps = [
         fl!("formatting-partition"),
         fl!("downloading-system-release"),
         fl!("unpacking-system-release"),
