@@ -228,7 +228,7 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     TermLogger::init(
-        LevelFilter::Debug,
+        LevelFilter::Info,
         Config::default(),
         TerminalMode::Stderr,
         ColorChoice::Auto,
