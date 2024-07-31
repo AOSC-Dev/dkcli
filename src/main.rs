@@ -701,7 +701,7 @@ fn validation_hostname(
     for i in input.chars() {
         if !i.is_ascii_alphabetic() && !i.is_ascii_alphanumeric() {
             return Ok(Validation::Invalid(
-                fl!("hostname-illage", c = i.to_string()).into(),
+                fl!("hostname-illegal", c = i.to_string()).into(),
             ));
         }
     }
@@ -715,7 +715,7 @@ fn valldation_username(
     for i in input.chars() {
         if !i.is_ascii_lowercase() && !i.is_ascii_alphanumeric() {
             return Ok(Validation::Invalid(
-                fl!("username-illage", c = i.to_string()).into(),
+                fl!("username-illegal", c = i.to_string()).into(),
             ));
         }
     }
@@ -727,7 +727,7 @@ fn vaildation_fullname(
     input: &str,
 ) -> std::result::Result<Validation, Box<dyn Error + Send + Sync>> {
     if input.contains(":") {
-        return Ok(Validation::Invalid(fl!("fullname-illage").into()));
+        return Ok(Validation::Invalid(fl!("fullname-illegal").into()));
     }
 
     Ok(Validation::Valid)
