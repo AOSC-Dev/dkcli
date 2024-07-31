@@ -1,13 +1,16 @@
+mod i18n;
 mod parser;
 
-use std::{error::Error, fs, path::PathBuf, process::exit, sync::Arc, time::Duration};
+use std::{error::Error, fmt::Debug, fs, path::PathBuf, process::exit, sync::Arc, time::Duration};
 
+use crate::i18n::I18N_LOADER;
 use anyhow::{bail, Context, Result};
 use clap::Parser;
 use indicatif::{HumanBytes, ProgressBar, ProgressStyle};
 use inquire::{
-    required, validator::Validation, Confirm, CustomType, Password, PasswordDisplayMode, Select,
-    Text,
+    required,
+    validator::{ErrorMessage, Validation},
+    Confirm, CustomType, Password, PasswordDisplayMode, Select, Text,
 };
 use log::{debug, info, LevelFilter};
 use parser::list_zoneinfo;
@@ -240,7 +243,7 @@ fn main() -> Result<()> {
     let dc = dk_client.clone();
 
     ctrlc::set_handler(move || {
-        info!("Install is canceled.");
+        info!("{}", fl!("install-is-canceled"));
         let rt = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
@@ -255,13 +258,19 @@ fn main() -> Result<()> {
     let data: ProgressStatus = serde_json::from_value(progress.data)?;
 
     if let ProgressStatus::Working { .. } = data {
-        info!("Another install is running ...");
+        info!("{}", fl!("another-install-is-running"));
         rt.block_on(get_progress(&dk_client))?;
         return Ok(());
     }
 
     let config = if let Some(config_path) = args.config {
-        info!("Install from config: {}", config_path.display());
+        info!(
+            "{}",
+            fl!(
+                "install-from-config",
+                path = config_path.display().to_string()
+            )
+        );
         let f = fs::read_to_string(config_path)?;
         let config: UserConfig = toml::from_str(&f)?;
         from_config(&rt, config, &dk_client)?
@@ -282,17 +291,17 @@ async fn get_progress(dk_client: &DeploykitProxy<'_>) -> Result<()> {
     )?
     .progress_chars("#>-");
 
-    let second_pb = ProgressBar::new(100).with_style(style);
+    let pb = ProgressBar::new(100).with_style(style);
 
     let steps = vec![
-        "Formatting partitions",
-        "Downloading system release",
-        "Unpacking system release",
-        "Generating fstab",
-        "Generating initramfs (initial RAM filesystem)",
-        "Installing and configuring GRUB bootloader",
-        "Generating SSH Key",
-        "Finalizing installation",
+        fl!("formatting-partition"),
+        fl!("downloading-system-release"),
+        fl!("unpacking-system-release"),
+        fl!("generating-fstab"),
+        fl!("generating-initramfs"),
+        fl!("installing-bootloader"),
+        fl!("generating-ssh-key"),
+        fl!("finalizing-installation"),
     ];
 
     loop {
@@ -301,8 +310,13 @@ async fn get_progress(dk_client: &DeploykitProxy<'_>) -> Result<()> {
 
         match data {
             ProgressStatus::Working { step, progress, .. } => {
-                second_pb.set_prefix(format!("({}/{}) {}", step, steps.len(), steps[(step - 1) as usize]));
-                second_pb.set_position(progress as u64);
+                pb.set_prefix(format!(
+                    "({}/{}) {}",
+                    step,
+                    steps.len(),
+                    steps[(step - 1) as usize]
+                ));
+                pb.set_position(progress as u64);
             }
             ProgressStatus::Pending => {
                 continue;
@@ -311,9 +325,8 @@ async fn get_progress(dk_client: &DeploykitProxy<'_>) -> Result<()> {
                 bail!("{e}");
             }
             ProgressStatus::Finish => {
-                // main_pb.finish_and_clear();
-                second_pb.finish_and_clear();
-                info!("Finished");
+                pb.finish_and_clear();
+                info!("{}", fl!("finished"));
                 return Ok(());
             }
         }
@@ -350,7 +363,7 @@ fn from_config(
         .block_on(Dbus::run(dk_client, DbusMethod::IsEFI))?
         .data
         .as_bool()
-        .context("Could not get is efi")?;
+        .context(fl!("direct-efi-error"))?;
 
     for d in devices {
         let partitions = runtime.block_on(get_partitions(dk_client, &d.path))?;
@@ -364,7 +377,7 @@ fn from_config(
 
         if is_efi {
             if config.efi_disk.is_none() {
-                bail!("efi_disk field is not set.");
+                bail!("{}", fl!("efi-field-not-set"));
             }
             if let Some(v) = partitions.iter().find(|x| {
                 x.path
@@ -378,35 +391,47 @@ fn from_config(
 
     if let Some(fullname) = &config.fullname {
         if let Ok(Validation::Invalid(e)) = vaildation_fullname(fullname) {
-            bail!("Invalid fullname: {:#?}", e);
+            if let ErrorMessage::Custom(s) = e {
+                bail!("{}", fl!("invaild-fullname", e = s));
+            } else {
+                unreachable!()
+            }
         }
     }
 
     if let Ok(Validation::Invalid(e)) = valldation_username(&config.user) {
-        bail!("Invalid username: {:#?}", e);
+        if let ErrorMessage::Custom(s) = e {
+            bail!("{}", fl!("invaild-username", e = s));
+        } else {
+            unreachable!()
+        }
     }
 
     if let Ok(Validation::Invalid(e)) = validation_hostname(&config.hostname) {
-        bail!("Invalid password: {:#?}", e);
+        if let ErrorMessage::Custom(s) = e {
+            bail!("{}", fl!("invaild-hostname", e = s));
+        } else {
+            unreachable!()
+        }
     }
 
     let locales = locales()?;
     let timezones = list_zoneinfo()?;
 
     if locales.iter().all(|x| x.data != config.locale) {
-        bail!("locale: {} not support", config.locale);
+        bail!("{}", fl!("invaild-locale", s = config.locale));
     }
 
     if timezones.iter().all(|x| x != &config.timezone) {
-        bail!("timezone: {} not support", config.timezone);
+        bail!("{}", fl!("invaild-timezone", s = config.timezone));
     }
 
     if target_part.is_none() {
-        bail!("Cannot find target partition or target partition size not enough");
+        bail!("{}", fl!("invaild-target-partition"));
     }
 
     if efi_disk.is_none() && is_efi {
-        bail!("Cannot find efi disk");
+        bail!("{}", fl!("invaild-efi-partition"));
     }
 
     Ok(InstallConfig {
@@ -426,13 +451,13 @@ fn from_config(
 }
 
 fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallConfig> {
-    let is_offline_install = Confirm::new("Install AOSC OS on offline mode?")
+    let is_offline_install = Confirm::new(&fl!("offline-mode"))
         .with_default(true)
         .prompt()?;
 
     let recipe = runtime.block_on(get_recipe(is_offline_install))?;
     let variant = Select::new(
-        "Install AOSC OS variant?",
+        &fl!("variant"),
         recipe
             .variants
             .iter()
@@ -458,18 +483,18 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         })
         .collect::<Vec<_>>();
 
-    info!("List of Devices:");
+    info!("{}", fl!("list-of-device"));
 
     for i in &devices {
         info!("{} {} ({})", i.model, i.path, HumanBytes(i.size));
     }
 
     if devices.is_empty() {
-        bail!("conform to install AOSC OS Device is empty");
+        bail!("{}", fl!("no-device-to-install"));
     }
 
     let device = Select::new(
-        "Select Device",
+        &fl!("select-device"),
         devices
             .iter()
             .map(|x| x.path.to_string())
@@ -484,7 +509,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         bail!("{e}");
     }
 
-    let auto_partition = Confirm::new("Auto Partition?")
+    let auto_partition = Confirm::new(&fl!("auto-partiton"))
         .with_default(false)
         .prompt()?;
 
@@ -506,14 +531,14 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
             .collect::<Vec<_>>();
 
         if install_parts_list.is_empty() {
-            bail!("conform to install AOSC OS Partitions is empty");
+            bail!("{}", fl!("no-partition-to-install"));
         }
 
         let is_efi = runtime
             .block_on(Dbus::run(dk_client, DbusMethod::IsEFI))?
             .data
             .as_bool()
-            .context("Could not get is efi")?;
+            .context(fl!("direct-efi-error"))?;
 
         info!("Device is{}EFI", if is_efi { " " } else { " not " });
 
@@ -521,14 +546,14 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
             .block_on(Dbus::run(dk_client, DbusMethod::IsLvmDevice(&device)))?
             .data
             .as_bool()
-            .context("Could not get is lvm device")?;
+            .context(fl!("direct-lvm-error"))?;
 
         if is_lvm_device {
-            bail!("Installer unsupport LVM Device.");
+            bail!("{}", fl!("unsupport-lvm-device"));
         }
 
         let partition = Select::new(
-            "Select system target partition",
+            &fl!("select-system-partition"),
             install_parts_list
                 .iter()
                 .filter_map(|x| x.path.as_ref().map(|x| x.to_string_lossy().to_string()))
@@ -548,11 +573,11 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
             let efi_parts: Vec<DkPartition> = serde_json::from_value(efi_parts)?;
 
             if efi_parts.is_empty() {
-                bail!("No ESP partition found on device");
+                bail!("{}", fl!("no-efi-partition"));
             }
 
             let efi_part = Select::new(
-                "Select ESP Partition",
+                &fl!("select-efi-partition"),
                 efi_parts
                     .iter()
                     .filter_map(|x| x.path.as_ref().map(|x| x.to_string_lossy().to_string()))
@@ -568,7 +593,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         (partition, efi)
     };
 
-    let fullname = Text::new("Your name?")
+    let fullname = Text::new(&fl!("fullname"))
         .with_validator(required!())
         .with_validator(vaildation_fullname)
         .prompt()?;
@@ -582,37 +607,37 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         default_username.push(i.to_ascii_lowercase());
     }
 
-    let username = Text::new("Username")
+    let username = Text::new(&fl!("username"))
         .with_validator(required!())
         .with_validator(valldation_username)
         .with_default(&default_username)
         .prompt()?;
 
-    let password = Password::new("Password")
+    let password = Password::new(&fl!("password"))
         .with_validator(required!())
         .with_display_mode(PasswordDisplayMode::Masked)
         .prompt()?;
 
     let timezones = list_zoneinfo()?;
 
-    let timezone = Select::new("Select timezone", timezones).prompt()?;
+    let timezone = Select::new(&fl!("timezone"), timezones).prompt()?;
 
     let locales = locales()?;
 
     let locale = Select::new(
-        "Select locale",
+        &fl!("locale"),
         locales.iter().map(|x| x.text.clone()).collect::<Vec<_>>(),
     )
     .prompt()?;
 
     let locale = locales.iter().find(|x| x.text == locale).unwrap();
 
-    let hostname = Text::new("Hostname")
+    let hostname = Text::new(&fl!("hostname"))
         .with_validator(required!())
         .with_validator(validation_hostname)
         .prompt()?;
 
-    let rtc_as_localtime = Confirm::new("Use RTC as localtime?")
+    let rtc_as_localtime = Confirm::new(&fl!("rtc-as-localtime"))
         .with_default(false)
         .prompt()?;
 
@@ -640,7 +665,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         }
     }
 
-    let swap_size = CustomType::<f64>::new("Swap file size? (GiB)")
+    let swap_size = CustomType::<f64>::new(&fl!("swap-size"))
         .with_default(
             format!("{:.2}", recommend_swap_file_size / 1024.0 / 1024.0 / 1024.0)
                 .parse::<f64>()
@@ -676,7 +701,7 @@ fn validation_hostname(
     for i in input.chars() {
         if !i.is_ascii_alphabetic() && !i.is_ascii_alphanumeric() {
             return Ok(Validation::Invalid(
-                format!("Username not allow contains special characters: {i}").into(),
+                fl!("hostname-illage", c = i.to_string()).into(),
             ));
         }
     }
@@ -690,7 +715,7 @@ fn valldation_username(
     for i in input.chars() {
         if !i.is_ascii_lowercase() && !i.is_ascii_alphanumeric() {
             return Ok(Validation::Invalid(
-                format!("Username not allow contains special characters: {i}").into(),
+                fl!("username-illage", c = i.to_string()).into(),
             ));
         }
     }
@@ -702,7 +727,7 @@ fn vaildation_fullname(
     input: &str,
 ) -> std::result::Result<Validation, Box<dyn Error + Send + Sync>> {
     if input.contains(":") {
-        return Ok(Validation::Invalid("Name not allow contains ':'".into()));
+        return Ok(Validation::Invalid(fl!("fullname-illage").into()));
     }
 
     Ok(Validation::Valid)
@@ -892,7 +917,7 @@ fn candidate_sqfs(variant: &Variant) -> Result<&Squashfs> {
         .filter(|x| get_arch_name().map(|arch| arch == x.arch).unwrap_or(false))
         .collect::<Vec<_>>();
     sqfs.sort_unstable_by(|a, b| b.data.cmp(&a.data));
-    let sqfs = sqfs.first().context("Squashfs has no entry!")?;
+    let sqfs = sqfs.first().context(fl!("squashfs-empty"))?;
 
     Ok(sqfs)
 }
