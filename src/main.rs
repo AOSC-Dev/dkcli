@@ -1,6 +1,6 @@
 mod parser;
 
-use std::{fs, path::PathBuf, process::exit, sync::Arc, time::Duration};
+use std::{error::Error, fs, path::PathBuf, process::exit, sync::Arc, time::Duration};
 
 use anyhow::{bail, Context, Result};
 use clap::Parser;
@@ -251,7 +251,7 @@ fn main() -> Result<()> {
     })
     .expect("Failed to set ctrlc handler");
 
-    let progress =  rt.block_on(Dbus::run(&dk_client, DbusMethod::GetProgress))?;
+    let progress = rt.block_on(Dbus::run(&dk_client, DbusMethod::GetProgress))?;
     let data: ProgressStatus = serde_json::from_value(progress.data)?;
 
     if let ProgressStatus::Working { .. } = data {
@@ -363,6 +363,31 @@ fn from_config(
                 efi_disk = Some(v.to_owned());
             }
         }
+    }
+
+    if let Some(fullname) = &config.fullname {
+        if let Ok(Validation::Invalid(e)) = vaildation_fullname(fullname) {
+            bail!("Invalid fullname: {:#?}", e);
+        }
+    }
+
+    if let Ok(Validation::Invalid(e)) = valldation_username(&config.user) {
+        bail!("Invalid username: {:#?}", e);
+    }
+
+    if let Ok(Validation::Invalid(e)) = validation_hostname(&config.hostname) {
+        bail!("Invalid password: {:#?}", e);
+    }
+
+    let locales = locales()?;
+    let timezones = list_zoneinfo()?;
+
+    if locales.iter().all(|x| x.data != config.locale) {
+        bail!("locale: {} not support", config.locale);
+    }
+
+    if timezones.iter().all(|x| x != &config.timezone) {
+        bail!("timezone: {} not support", config.timezone);
     }
 
     if target_part.is_none() {
@@ -534,12 +559,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
 
     let fullname = Text::new("Your name?")
         .with_validator(required!())
-        .with_validator(|input: &str| {
-            if input.contains(":") {
-                return Ok(Validation::Invalid("Name not allow contains ':'".into()));
-            }
-            Ok(Validation::Valid)
-        })
+        .with_validator(vaildation_fullname)
         .prompt()?;
 
     let mut default_username = String::new();
@@ -553,16 +573,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
 
     let username = Text::new("Username")
         .with_validator(required!())
-        .with_validator(|input: &str| {
-            for i in input.chars() {
-                if !i.is_ascii_lowercase() && !i.is_ascii_alphanumeric() {
-                    return Ok(Validation::Invalid(
-                        format!("Username not allow contains special characters: {i}").into(),
-                    ));
-                }
-            }
-            Ok(Validation::Valid)
-        })
+        .with_validator(valldation_username)
         .with_default(&default_username)
         .prompt()?;
 
@@ -575,7 +586,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
 
     let timezone = Select::new("Select timezone", timezones).prompt()?;
 
-    let locales: Vec<Locale> = serde_json::from_str(LOCALE_LIST)?;
+    let locales = locales()?;
 
     let locale = Select::new(
         "Select locale",
@@ -587,16 +598,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
 
     let hostname = Text::new("Hostname")
         .with_validator(required!())
-        .with_validator(|input: &str| {
-            for i in input.chars() {
-                if !i.is_ascii_alphabetic() && !i.is_ascii_alphanumeric() {
-                    return Ok(Validation::Invalid(
-                        format!("Username not allow contains special characters: {i}").into(),
-                    ));
-                }
-            }
-            Ok(Validation::Valid)
-        })
+        .with_validator(validation_hostname)
         .prompt()?;
 
     let rtc_as_localtime = Confirm::new("Use RTC as localtime?")
@@ -649,6 +651,50 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         locale: locale.data.clone(),
         swapfile_size: swap_size,
     })
+}
+
+fn locales() -> Result<Vec<Locale>> {
+    let locales: Vec<Locale> = serde_json::from_str(LOCALE_LIST)?;
+
+    Ok(locales)
+}
+
+fn validation_hostname(
+    input: &str,
+) -> std::result::Result<Validation, Box<dyn Error + Send + Sync>> {
+    for i in input.chars() {
+        if !i.is_ascii_alphabetic() && !i.is_ascii_alphanumeric() {
+            return Ok(Validation::Invalid(
+                format!("Username not allow contains special characters: {i}").into(),
+            ));
+        }
+    }
+
+    Ok(Validation::Valid)
+}
+
+fn valldation_username(
+    input: &str,
+) -> std::result::Result<Validation, Box<dyn Error + Send + Sync>> {
+    for i in input.chars() {
+        if !i.is_ascii_lowercase() && !i.is_ascii_alphanumeric() {
+            return Ok(Validation::Invalid(
+                format!("Username not allow contains special characters: {i}").into(),
+            ));
+        }
+    }
+
+    Ok(Validation::Valid)
+}
+
+fn vaildation_fullname(
+    input: &str,
+) -> std::result::Result<Validation, Box<dyn Error + Send + Sync>> {
+    if input.contains(":") {
+        return Ok(Validation::Invalid("Name not allow contains ':'".into()));
+    }
+
+    Ok(Validation::Valid)
 }
 
 fn get_partition(partitions: &[DkPartition], partition: &str) -> DkPartition {
