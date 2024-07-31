@@ -544,6 +544,7 @@ dependencies = [
  "i18n-embed-fl",
  "indicatif",
  "inquire",
+ "libc",
  "log",
  "nom",
  "once_cell",
