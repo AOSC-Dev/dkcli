@@ -277,12 +277,23 @@ fn main() -> Result<()> {
 }
 
 async fn get_progress(dk_client: &DeploykitProxy<'_>) -> Result<()> {
-    let multi_bar = MultiProgress::new();
     let style = ProgressStyle::with_template(
-        "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len}",
-    )?;
-    let main_pb = multi_bar.add(ProgressBar::new(8).with_style(style.clone()));
-    let second_pb = multi_bar.add(ProgressBar::new(100).with_style(style));
+        "{prefix:.bold}   [{wide_bar:.cyan/blue}] {percent}%",
+    )?
+    .progress_chars("#>-");
+
+    let second_pb = ProgressBar::new(100).with_style(style);
+
+    let steps = vec![
+        "Formatting partitions",
+        "Downloading system release",
+        "Unpacking system release",
+        "Generating fstab",
+        "Generating initramfs (initial RAM filesystem)",
+        "Installing and configuring GRUB bootloader",
+        "Generating SSH Key",
+        "Finalizing installation",
+    ];
 
     loop {
         let progress = Dbus::run(dk_client, DbusMethod::GetProgress).await?;
@@ -290,7 +301,7 @@ async fn get_progress(dk_client: &DeploykitProxy<'_>) -> Result<()> {
 
         match data {
             ProgressStatus::Working { step, progress, .. } => {
-                main_pb.set_position(step as u64);
+                second_pb.set_prefix(format!("({}/{}) {}", step, steps.len(), steps[(step - 1) as usize]));
                 second_pb.set_position(progress as u64);
             }
             ProgressStatus::Pending => {
@@ -300,7 +311,7 @@ async fn get_progress(dk_client: &DeploykitProxy<'_>) -> Result<()> {
                 bail!("{e}");
             }
             ProgressStatus::Finish => {
-                main_pb.finish_and_clear();
+                // main_pb.finish_and_clear();
                 second_pb.finish_and_clear();
                 info!("Finished");
                 return Ok(());
@@ -391,7 +402,7 @@ fn from_config(
     }
 
     if target_part.is_none() {
-        bail!("Cannot find target partition");
+        bail!("Cannot find target partition or target partition size not enough");
     }
 
     if efi_disk.is_none() && is_efi {
