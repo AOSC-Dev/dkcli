@@ -504,13 +504,6 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
     )
     .prompt()?;
 
-    let disk_is_right_combo =
-        runtime.block_on(Dbus::run(dk_client, DbusMethod::DiskIsRightCombo(&device)));
-
-    if let Err(e) = disk_is_right_combo {
-        bail!("{e}");
-    }
-
     let auto_partition = Confirm::new(&fl!("auto-partiton"))
         .with_default(false)
         .prompt()?;
@@ -519,6 +512,13 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         runtime.block_on(Dbus::run(dk_client, DbusMethod::AutoPartition(&device)))?;
         runtime.block_on(get_auto_partition_progress(dk_client))?
     } else {
+        let disk_is_right_combo =
+            runtime.block_on(Dbus::run(dk_client, DbusMethod::DiskIsRightCombo(&device)));
+
+        if let Err(e) = disk_is_right_combo {
+            bail!("{e}");
+        }
+
         let partitions = runtime.block_on(get_partitions(dk_client, &device))?;
 
         let install_parts_list = partitions
