@@ -542,7 +542,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
             .as_bool()
             .context(fl!("direct-efi-error"))?;
 
-        info!("Device is{}EFI", if is_efi { " " } else { " not " });
+        debug!("Device is{}EFI", if is_efi { " " } else { " not " });
 
         let is_lvm_device = runtime
             .block_on(Dbus::run(dk_client, DbusMethod::IsLvmDevice(&device)))?
