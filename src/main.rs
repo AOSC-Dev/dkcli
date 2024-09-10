@@ -601,12 +601,16 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         .prompt()?;
 
     let mut default_username = String::new();
-    for i in fullname.chars() {
-        if !i.is_ascii_alphabetic() && !i.is_ascii_alphanumeric() {
+    for (i, c) in fullname.chars().enumerate() {
+        if i == 0 && c.is_alphanumeric() {
             continue;
         }
 
-        default_username.push(i.to_ascii_lowercase());
+        if !c.is_ascii_alphabetic() && !c.is_ascii_alphanumeric() {
+            continue;
+        }
+
+        default_username.push(c.to_ascii_lowercase());
     }
 
     let username = Text::new(&fl!("username"))
