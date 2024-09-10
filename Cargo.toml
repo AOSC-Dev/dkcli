@@ -4,25 +4,24 @@ version = "0.3.2"
 edition = "2021"
 
 [dependencies]
-tokio = { version = "1.35", features = ["rt-multi-thread"] }
-anyhow = "1"
-zbus = { version = "4.2", features = ["tokio"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-indicatif = "0.17"
+tokio = { version = "1.40.0", features = ["rt-multi-thread"] }
+anyhow = "1.0.87"
+zbus = { version = "4.4.0", features = ["tokio"] }
+serde = { version = "1.0.210", features = ["derive"] }
+serde_json = "1.0.128"
+indicatif = "0.17.8"
 inquire = "0.7.5"
-reqwest = { version = "0.12.5", features = ["json"] }
+reqwest = { version = "0.12.7", features = ["json"] }
 simplelog = "0.12.2"
-log = "0.4"
-nom = "7"
-ctrlc = "3.4.4"
-clap = { version = "4.5", features = ["derive"] }
-toml = "0.8"
-once_cell = "1.18"
-libc = "0.2"
+log = "0.4.22"
+nom = "7.1.3"
+ctrlc = "3.4.5"
+clap = { version = "4.5.17", features = ["derive"] }
+toml = "0.8.19"
+libc = "0.2.158"
 
 # i18n
-i18n-embed = { version = "0.14", features = ["fluent-system", "desktop-requester"]}
-i18n-embed-fl = "0.8"
-rust-embed = "^8"
-unic-langid = "0.9"
+i18n-embed = { version = "0.15.0", features = ["fluent-system", "desktop-requester"]}
+i18n-embed-fl = "0.9.1"
+rust-embed = "8.5.0"
+unic-langid = "0.9.5"
