@@ -3,9 +3,10 @@ mod parser;
 
 use std::{error::Error, fmt::Debug, fs, path::PathBuf, process::exit, sync::Arc, time::Duration};
 
-use crate::i18n::I18N_LOADER;
 use anyhow::{bail, Context, Result};
 use clap::Parser;
+use i18n::LANGUAGE_LOADER;
+use i18n_embed::DesktopLanguageRequester;
 use indicatif::{HumanBytes, ProgressBar, ProgressStyle};
 use inquire::{
     required,
@@ -225,6 +226,18 @@ impl TryFrom<String> for Dbus {
 }
 
 fn main() -> Result<()> {
+    let localizer = crate::i18n::localizer();
+    let requested_languages = DesktopLanguageRequester::requested_languages();
+
+    if let Err(error) = localizer.select(&requested_languages) {
+        eprintln!("Error while loading languages for library_fluent {}", error);
+    }
+
+    // Windows Terminal doesn't support bidirectional (BiDi) text, and renders the isolate characters incorrectly.
+    // This is a temporary workaround for https://github.com/microsoft/terminal/issues/16574
+    // TODO: this might break BiDi text, though we don't support any writing system depends on that.
+    LANGUAGE_LOADER.set_use_isolating(false);
+
     let args = Args::parse();
 
     TermLogger::init(
