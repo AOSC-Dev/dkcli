@@ -43,3 +43,4 @@ hostname-illegal = The specified hostname contains invalid character(s): { $c }
 username-illegal = The specified username contains invalid character(s): { $c }
 fullname-illegal = The specified full name contains invalid character: ':'
 squashfs-empty = The system release manifest does not contain `squashfs' field and may be corrupted.
+confirm-password = Confirmation

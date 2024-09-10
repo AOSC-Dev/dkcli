@@ -618,6 +618,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
     let password = Password::new(&fl!("password"))
         .with_validator(required!())
         .with_display_mode(PasswordDisplayMode::Masked)
+        .with_custom_confirmation_message(&fl!("confirm-password"))
         .prompt()?;
 
     let timezones = list_zoneinfo()?;
