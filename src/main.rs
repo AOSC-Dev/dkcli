@@ -638,6 +638,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         .with_validator(required!())
         .with_display_mode(PasswordDisplayMode::Masked)
         .with_custom_confirmation_message(&fl!("confirm-password"))
+        .custom_confirmation_error_message(&fl!("confirm-password-not-matching"))
         .prompt()?;
 
     let timezones = list_zoneinfo()?;
@@ -831,7 +832,7 @@ async fn get_auto_partition_progress(
                 }
             },
             AutoPartitionProgress::Working => {
-                pb.set_message("Working");
+                pb.set_message(fl!("auto-partition-working"));
             }
             _ => {
                 debug!("Progress: {:?}", data);
@@ -851,7 +852,7 @@ async fn create_dbus_client() -> Result<DeploykitProxy<'static>> {
 
 async fn get_recipe(offline_mode: bool) -> Result<Recipe> {
     let recipe = if !offline_mode {
-        info!("Downloading Recipe file ...");
+        info!("{}", fl!("downloading-recipe"));
         let client = ClientBuilder::new().user_agent("deploykit").build()?;
         let resp = client
             .get("https://releases.aosc.io/manifest/recipe.json")
