@@ -50,3 +50,7 @@ confirm-prompt = Continue (y/n)
 downloading-recipe = Fetching system release metadata ...
 auto-partition-working = Automatic partitioning in progress, please wait ...
 confirm-password-not-matching = The passwords do not match, please retry.
+username-required = A valid UNIX username is required.
+password-required = A password is required.
+hostname-required = A valid hostname is required.
+yn-confirm-required = Confirmation required: please type 'Y' to confirm, 'N' to abort.
