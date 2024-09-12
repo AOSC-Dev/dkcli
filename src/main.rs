@@ -700,7 +700,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
     let confirm = Confirm::new(&fl!("confirm-prompt")).prompt()?;
 
     if !confirm {
-        bail!("Install is cancel.");
+        bail!("Install has been cancelled by the user.");
     }
 
     Ok(InstallConfig {
