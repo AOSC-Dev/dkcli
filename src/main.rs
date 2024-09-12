@@ -613,18 +613,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         .with_validator(vaildation_fullname)
         .prompt()?;
 
-    let mut default_username = String::new();
-    for (i, c) in fullname.chars().enumerate() {
-        if i == 0 && c.is_alphanumeric() {
-            continue;
-        }
-
-        if !c.is_ascii_alphabetic() && !c.is_ascii_alphanumeric() {
-            continue;
-        }
-
-        default_username.push(c.to_ascii_lowercase());
-    }
+    let default_username = get_default_username(&fullname);
 
     let username = Text::new(&fl!("username"))
         .with_validator(required!())
@@ -707,6 +696,26 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         locale: locale.data.clone(),
         swapfile_size: swap_size,
     })
+}
+
+fn get_default_username(fullname: &str) -> String {
+    let mut default_username = String::new();
+    let mut not_a_number = false;
+
+    for c in fullname.chars() {
+        if c.is_ascii_digit() && !not_a_number {
+            continue;
+        }
+
+        if !c.is_ascii_alphabetic() && !c.is_ascii_digit() {
+            continue;
+        }
+
+        default_username.push(c.to_ascii_lowercase());
+        not_a_number = true;
+    }
+
+    default_username
 }
 
 fn locales() -> Result<Vec<Locale>> {
@@ -976,4 +985,23 @@ pub(crate) fn get_arch_name() -> Option<&'static str> {
         "loongarch64" => Some("loongarch64"),
         _ => None,
     }
+}
+
+#[test]
+fn test_username() {
+    let full_name = "Mag Mell";
+    let name = get_default_username(&full_name);
+    assert_eq!("magmell", name);
+
+    let full_name = "123test";
+    let name = get_default_username(&full_name);
+    assert_eq!("test", name);
+
+    let full_name = "123 45";
+    let name = get_default_username(&full_name);
+    assert_eq!("", name);
+
+    let full_name = "cth451";
+    let name = get_default_username(&full_name);
+    assert_eq!("cth451", name);
 }
