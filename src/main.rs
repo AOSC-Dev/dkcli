@@ -628,16 +628,16 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
     let default_username = get_default_username(&fullname);
 
     let username = Text::new(&fl!("username"))
-        .with_validator(required!())
+        .with_validator(required!(fl!("username-required")))
         .with_validator(valldation_username)
         .with_default(&default_username)
         .prompt()?;
 
     let password = Password::new(&fl!("password"))
-        .with_validator(required!())
+        .with_validator(required!(fl!("password-required")))
         .with_display_mode(PasswordDisplayMode::Masked)
         .with_custom_confirmation_message(&fl!("confirm-password"))
-        .custom_confirmation_error_message(&fl!("confirm-password-not-matching"))
+        .with_custom_confirmation_error_message(&fl!("confirm-password-not-matching"))
         .prompt()?;
 
     let timezones = list_zoneinfo()?;
@@ -655,7 +655,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
     let locale = locales.iter().find(|x| x.text == locale).unwrap();
 
     let hostname = Text::new(&fl!("hostname"))
-        .with_validator(required!())
+        .with_validator(required!(fl!("hostname-required")))
         .with_validator(validation_hostname)
         .prompt()?;
 
