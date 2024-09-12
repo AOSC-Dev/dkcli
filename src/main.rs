@@ -431,7 +431,7 @@ fn from_config(
         }
     }
 
-    if let Ok(Validation::Invalid(e)) = validation_hostname(&config.hostname) {
+    if let Ok(Validation::Invalid(e)) = validate_hostname(&config.hostname) {
         if let ErrorMessage::Custom(s) = e {
             bail!("{}", fl!("invaild-hostname", e = s));
         } else {
@@ -656,7 +656,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
 
     let hostname = Text::new(&fl!("hostname"))
         .with_validator(required!(fl!("hostname-required")))
-        .with_validator(validation_hostname)
+        .with_validator(validate_hostname)
         .prompt()?;
 
     let rtc_as_localtime = Confirm::new(&fl!("rtc-as-localtime"))
@@ -745,7 +745,7 @@ fn locales() -> Result<Vec<Locale>> {
     Ok(locales)
 }
 
-fn validation_hostname(
+fn validate_hostname(
     input: &str,
 ) -> std::result::Result<Validation, Box<dyn Error + Send + Sync>> {
     for i in input.chars() {
