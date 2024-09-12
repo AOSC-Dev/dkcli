@@ -704,7 +704,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         .prompt()?;
 
     if !confirm {
-        bail!("Install has been cancelled by the user.");
+        bail!("{}", fl!("installation-aborted"));
     }
 
     Ok(InstallConfig {
