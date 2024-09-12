@@ -1,7 +1,15 @@
 mod i18n;
 mod parser;
 
-use std::{error::Error, fmt::Debug, fs, path::PathBuf, process::exit, sync::Arc, time::Duration};
+use std::{
+    error::Error,
+    fmt::Debug,
+    fs,
+    path::{Path, PathBuf},
+    process::exit,
+    sync::Arc,
+    time::Duration,
+};
 
 use anyhow::{bail, Context, Result};
 use clap::Parser;
@@ -23,6 +31,7 @@ use tokio::{runtime::Runtime, time::sleep};
 use zbus::{proxy, Connection, Result as zResult};
 
 const LOCALE_LIST: &str = include_str!("../lang_select.json");
+const OFFLINE_RECIPE_PATH: &str = "/run/livekit/livemnt/manifest/recipe.json";
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -466,9 +475,13 @@ fn from_config(
 }
 
 fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallConfig> {
-    let is_offline_install = Confirm::new(&fl!("offline-mode"))
-        .with_default(true)
-        .prompt()?;
+    let is_offline_install = if Path::new(OFFLINE_RECIPE_PATH).exists() {
+        Confirm::new(&fl!("offline-mode"))
+            .with_default(true)
+            .prompt()?
+    } else {
+        false
+    };
 
     let recipe = runtime.block_on(get_recipe(is_offline_install))?;
     let variant = Select::new(
@@ -840,7 +853,7 @@ async fn get_recipe(offline_mode: bool) -> Result<Recipe> {
 
         resp.json::<Recipe>().await?
     } else {
-        let f = tokio::fs::read("/run/livekit/livemnt/manifest/recipe.json").await?;
+        let f = tokio::fs::read(OFFLINE_RECIPE_PATH).await?;
         serde_json::from_slice(&f)?
     };
 
