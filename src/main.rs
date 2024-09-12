@@ -532,7 +532,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
 
     info!("{}", fl!("confirm-autopart"));
 
-    let auto_partition = Confirm::new(&fl!("auto-partiton")).prompt()?;
+    let auto_partition = Confirm::new(&fl!("auto-partiton")).with_error_message(&fl!("yn-confirm-required")).prompt()?;
 
     let (partition, efi) = if auto_partition {
         runtime.block_on(Dbus::run(dk_client, DbusMethod::AutoPartition(&device)))?;
@@ -697,7 +697,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
 
     info!("{}", fl!("confirm"));
 
-    let confirm = Confirm::new(&fl!("confirm-prompt")).prompt()?;
+    let confirm = Confirm::new(&fl!("confirm-prompt")).with_error_message(&fl!("yn-confirm-required")).prompt()?;
 
     if !confirm {
         bail!("Install has been cancelled by the user.");
