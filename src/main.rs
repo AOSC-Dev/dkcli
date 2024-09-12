@@ -622,7 +622,6 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
     };
 
     let fullname = Text::new(&fl!("fullname"))
-        .with_validator(required!())
         .with_validator(vaildation_fullname)
         .prompt()?;
 
