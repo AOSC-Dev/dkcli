@@ -423,7 +423,7 @@ fn from_config(
         }
     }
 
-    if let Ok(Validation::Invalid(e)) = valldation_username(&config.user) {
+    if let Ok(Validation::Invalid(e)) = validate_username(&config.user) {
         if let ErrorMessage::Custom(s) = e {
             bail!("{}", fl!("invaild-username", e = s));
         } else {
@@ -629,7 +629,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
 
     let username = Text::new(&fl!("username"))
         .with_validator(required!(fl!("username-required")))
-        .with_validator(valldation_username)
+        .with_validator(validate_username)
         .with_default(&default_username)
         .prompt()?;
 
@@ -759,7 +759,7 @@ fn validation_hostname(
     Ok(Validation::Valid)
 }
 
-fn valldation_username(
+fn validate_username(
     input: &str,
 ) -> std::result::Result<Validation, Box<dyn Error + Send + Sync>> {
     for i in input.chars() {
