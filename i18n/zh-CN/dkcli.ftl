@@ -54,3 +54,4 @@ password-required = 需设置密码。
 hostname-required = 需设置有效主机名。
 username-required = 需设置有效 UNIX 用户名。
 yn-confirm-required = 请确认操作：按 'Y' 确认，按 'N' 中止操作。
+installation-aborted = 已中止安装。
