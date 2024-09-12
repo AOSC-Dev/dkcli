@@ -44,3 +44,6 @@ username-illegal = The specified username contains invalid character(s): { $c }
 fullname-illegal = The specified full name contains invalid character: ':'
 squashfs-empty = The system release manifest does not contain `squashfs' field and may be corrupted.
 confirm-password = Confirmation
+confirm = Please confirm whether you want to continue with the installation, if you do, YOUR DATA WILL BE CLEARED!
+confirm-autopart = Please confirm whether you want to do automatic partitioning or not, if you do, YOUR DATA WILL BE CLEARED!
+confirm-prompt = Continue

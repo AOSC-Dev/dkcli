@@ -44,3 +44,6 @@ username-illegal = 指定的 UNIX 用户名中包含无效字符：{ $c }
 fullname-illegal = 指定的用户全名中包含无效字符：':'
 squashfs-empty = 系统发行元数据文件中未包含 `squashfs'，该元数据文件可能已损坏。
 confirm-password = 确认密码
+confirm = 请您确认最终是否继续安装；若继续，你的数据将被清空！
+confirm-autopart = 请您确认是否进行自动分区；若进行自动分区，你的数据将被清空！
+confirm-prompt = 是否继续
