@@ -532,7 +532,9 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
 
     info!("{}", fl!("confirm-autopart"));
 
-    let auto_partition = Confirm::new(&fl!("auto-partiton")).with_error_message(&fl!("yn-confirm-required")).prompt()?;
+    let auto_partition = Confirm::new(&fl!("auto-partiton"))
+        .with_error_message(&fl!("yn-confirm-required"))
+        .prompt()?;
 
     let (partition, efi) = if auto_partition {
         runtime.block_on(Dbus::run(dk_client, DbusMethod::AutoPartition(&device)))?;
@@ -697,7 +699,9 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
 
     info!("{}", fl!("confirm"));
 
-    let confirm = Confirm::new(&fl!("confirm-prompt")).with_error_message(&fl!("yn-confirm-required")).prompt()?;
+    let confirm = Confirm::new(&fl!("confirm-prompt"))
+        .with_error_message(&fl!("yn-confirm-required"))
+        .prompt()?;
 
     if !confirm {
         bail!("Install has been cancelled by the user.");
@@ -745,9 +749,7 @@ fn locales() -> Result<Vec<Locale>> {
     Ok(locales)
 }
 
-fn validate_hostname(
-    input: &str,
-) -> std::result::Result<Validation, Box<dyn Error + Send + Sync>> {
+fn validate_hostname(input: &str) -> std::result::Result<Validation, Box<dyn Error + Send + Sync>> {
     for i in input.chars() {
         if !i.is_ascii_alphabetic() && !i.is_ascii_alphanumeric() {
             return Ok(Validation::Invalid(
@@ -759,9 +761,7 @@ fn validate_hostname(
     Ok(Validation::Valid)
 }
 
-fn validate_username(
-    input: &str,
-) -> std::result::Result<Validation, Box<dyn Error + Send + Sync>> {
+fn validate_username(input: &str) -> std::result::Result<Validation, Box<dyn Error + Send + Sync>> {
     for i in input.chars() {
         if !i.is_ascii_lowercase() && !i.is_ascii_alphanumeric() {
             return Ok(Validation::Invalid(
