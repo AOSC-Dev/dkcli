@@ -338,7 +338,7 @@ async fn get_progress(dk_client: &DeploykitProxy<'_>) -> Result<()> {
                     "({}/{}) {}",
                     step,
                     steps.len(),
-                    steps[(step - 1) as usize]
+                    steps[step.saturating_sub(1) as usize]
                 ));
                 pb.set_position(progress as u64);
             }
