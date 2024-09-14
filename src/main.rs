@@ -750,8 +750,14 @@ fn locales() -> Result<Vec<Locale>> {
 }
 
 fn validate_hostname(input: &str) -> std::result::Result<Validation, Box<dyn Error + Send + Sync>> {
-    for i in input.chars() {
-        if !i.is_ascii_alphabetic() && !i.is_ascii_alphanumeric() {
+    if input.starts_with('-') {
+        return Ok(Validation::Invalid(
+            fl!("hostname-illegal", c = "-".to_string()).into(),
+        ));
+    }
+
+    for i in input.as_bytes() {
+        if !i.is_ascii_alphanumeric() && *i != b'-' {
             return Ok(Validation::Invalid(
                 fl!("hostname-illegal", c = i.to_string()).into(),
             ));
@@ -1025,4 +1031,48 @@ fn test_username() {
     let full_name = "cth451";
     let name = get_default_username(&full_name);
     assert_eq!("cth451", name);
+}
+
+#[test]
+fn test_hostname_validation() {
+    assert_eq!(validate_hostname("foo").unwrap(), Validation::Valid);
+    assert_eq!(validate_hostname("foo-2e10").unwrap(), Validation::Valid);
+    assert_eq!(
+        validate_hostname("jeffbai-device").unwrap(),
+        Validation::Valid
+    );
+    assert!(matches!(
+        validate_hostname("invalid_host").unwrap(),
+        Validation::Invalid(..)
+    ));
+    assert!(matches!(
+        validate_hostname("-invalid").unwrap(),
+        Validation::Invalid(..)
+    ));
+    assert!(matches!(
+        validate_hostname("+invalid").unwrap(),
+        Validation::Invalid(..)
+    ));
+    assert!(matches!(
+        validate_hostname("JellyDimension").unwrap(),
+        Validation::Valid
+    ));
+    assert!(matches!(
+        validate_hostname("Jelly_Dimension").unwrap(),
+        Validation::Invalid(..)
+    ));
+}
+
+#[test]
+fn test_username_validation() {
+    assert_eq!(validate_username("foo").unwrap(), Validation::Valid);
+    assert_eq!(validate_username("cth451").unwrap(), Validation::Valid);
+    assert!(matches!(
+        validate_username("老白").unwrap(),
+        Validation::Invalid(..)
+    ));
+    assert!(matches!(
+        validate_username("BAIMINGCONG").unwrap(),
+        Validation::Invalid(..)
+    ));
 }
