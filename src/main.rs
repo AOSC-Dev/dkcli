@@ -752,7 +752,7 @@ fn locales() -> Result<Vec<Locale>> {
 fn validate_hostname(input: &str) -> std::result::Result<Validation, Box<dyn Error + Send + Sync>> {
     if input.starts_with('-') {
         return Ok(Validation::Invalid(
-            fl!("hostname-illegal", c = "-".to_string()).into(),
+            fl!("hostname-illegal-startswith", c = "-".to_string()).into(),
         ));
     }
 
