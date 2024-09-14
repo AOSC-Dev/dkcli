@@ -40,8 +40,7 @@ password = 密码
 rtc-as-localtime = 是否使用硬件时钟 (RTC) 作为系统时间？
 swap-size = 虚拟内存文件 (swapfile) 大小 (GiB)
 hostname-illegal = 指定的主机名中包含无效字符：{ $c }
-hostname-illegal-startswith = 指定的主机名开头包含无效字符字符：{ $c }
-
+hostname-illegal-startswith = 指定的主机名以无效字符字符开头：{ $c }
 username-illegal = 指定的 UNIX 用户名中包含无效字符：{ $c }
 fullname-illegal = 指定的用户全名中包含无效字符：':'
 squashfs-empty = 系统发行元数据文件中未包含 `squashfs'，该元数据文件可能已损坏。
