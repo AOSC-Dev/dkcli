@@ -754,7 +754,7 @@ fn validate_hostname(input: &str) -> std::result::Result<Validation, Box<dyn Err
         return Ok(Validation::Invalid("Hostname too loong.".into()));
     }
 
-    for i in ['-', '.'] {
+    for i in ['-', '.', '_'] {
         if input.starts_with(i) {
             return Ok(Validation::Invalid(
                 fl!("hostname-illegal-startswith", c = i.to_string()).into(),
@@ -762,7 +762,7 @@ fn validate_hostname(input: &str) -> std::result::Result<Validation, Box<dyn Err
         }
     }
 
-    for i in ['-', '.'] {
+    for i in ['-', '.', '_'] {
         if input.ends_with(i) {
             return Ok(Validation::Invalid(
                 format!("Hostname ends with '{}'", i).into(),
