@@ -750,14 +750,31 @@ fn locales() -> Result<Vec<Locale>> {
 }
 
 fn validate_hostname(input: &str) -> std::result::Result<Validation, Box<dyn Error + Send + Sync>> {
-    if input.starts_with('-') {
+    if input.len() > 64 {
+        return Ok(Validation::Invalid("Hostname too loong.".into()));
+    }
+
+    if input.starts_with('-') || input.starts_with('.') {
         return Ok(Validation::Invalid(
             fl!("hostname-illegal-startswith", c = "-".to_string()).into(),
         ));
     }
 
+    if input.ends_with('.') {
+        return Ok(Validation::Invalid("Hostname ends with '.'".into()));
+    }
+
+    let mut is_dot = false;
     for i in input.as_bytes() {
-        if !i.is_ascii_alphanumeric() && *i != b'-' {
+        if *i == b'.' && is_dot {
+            return Ok(Validation::Invalid("Hostname contains '..".into()));
+        }
+
+        if *i == b'.' {
+            is_dot = true;
+        }
+
+        if !i.is_ascii_alphanumeric() && *i != b'-' && *i != b'.' && *i != b'_' {
             return Ok(Validation::Invalid(
                 fl!("hostname-illegal", c = i.to_string()).into(),
             ));
@@ -767,6 +784,7 @@ fn validate_hostname(input: &str) -> std::result::Result<Validation, Box<dyn Err
     Ok(Validation::Valid)
 }
 
+// https://manpages.ubuntu.com/manpages/oracular/en/man5/hostname.5.html
 fn validate_username(input: &str) -> std::result::Result<Validation, Box<dyn Error + Send + Sync>> {
     for i in input.chars() {
         if !i.is_ascii_lowercase() && !i.is_ascii_alphanumeric() {
@@ -1043,7 +1061,7 @@ fn test_hostname_validation() {
     );
     assert!(matches!(
         validate_hostname("invalid_host").unwrap(),
-        Validation::Invalid(..)
+        Validation::Valid
     ));
     assert!(matches!(
         validate_hostname("-invalid").unwrap(),
@@ -1059,8 +1077,16 @@ fn test_hostname_validation() {
     ));
     assert!(matches!(
         validate_hostname("Jelly_Dimension").unwrap(),
-        Validation::Invalid(..)
+        Validation::Valid
     ));
+    assert_eq!(validate_hostname("AOSC.OS").unwrap(), Validation::Valid);
+    assert!(matches!(validate_hostname(&"a".repeat(65)).unwrap(), Validation::Invalid(..)));
+    assert!(matches!(validate_hostname("a..b").unwrap(), Validation::Invalid(..)));
+    assert!(matches!(validate_hostname("abc.").unwrap(), Validation::Invalid(..)));
+    assert!(matches!(validate_hostname(".abc").unwrap(), Validation::Invalid(..)));
+    assert!(matches!(validate_hostname(".abc.").unwrap(), Validation::Invalid(..)));
+
+
 }
 
 #[test]
