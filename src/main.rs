@@ -760,7 +760,6 @@ fn validate_hostname(input: &str) -> std::result::Result<Validation, Box<dyn Err
                 fl!("hostname-illegal-startswith", c = i.to_string()).into(),
             ));
         }
-    
     }
 
     if input.ends_with('.') {
@@ -768,18 +767,18 @@ fn validate_hostname(input: &str) -> std::result::Result<Validation, Box<dyn Err
     }
 
     let mut is_dot = false;
-    for i in input.as_bytes() {
-        if *i == b'.' && is_dot {
+    for c in input.chars() {
+        if c == '.' && is_dot {
             return Ok(Validation::Invalid("Hostname contains '..".into()));
         }
 
-        if *i == b'.' {
+        if c == '.' {
             is_dot = true;
         }
 
-        if !i.is_ascii_alphanumeric() && *i != b'-' && *i != b'.' && *i != b'_' {
+        if !c.is_ascii_alphanumeric() && c != '-' && c != '.' && c != '_' {
             return Ok(Validation::Invalid(
-                fl!("hostname-illegal", c = i.to_string()).into(),
+                fl!("hostname-illegal", c = c.to_string()).into(),
             ));
         }
     }
@@ -1083,11 +1082,26 @@ fn test_hostname_validation() {
         Validation::Valid
     ));
     assert_eq!(validate_hostname("AOSC.OS").unwrap(), Validation::Valid);
-    assert!(matches!(validate_hostname(&"a".repeat(65)).unwrap(), Validation::Invalid(..)));
-    assert!(matches!(validate_hostname("a..b").unwrap(), Validation::Invalid(..)));
-    assert!(matches!(validate_hostname("abc.").unwrap(), Validation::Invalid(..)));
-    assert!(matches!(validate_hostname(".abc").unwrap(), Validation::Invalid(..)));
-    assert!(matches!(validate_hostname(".abc.").unwrap(), Validation::Invalid(..)));
+    assert!(matches!(
+        validate_hostname(&"a".repeat(65)).unwrap(),
+        Validation::Invalid(..)
+    ));
+    assert!(matches!(
+        validate_hostname("a..b").unwrap(),
+        Validation::Invalid(..)
+    ));
+    assert!(matches!(
+        validate_hostname("abc.").unwrap(),
+        Validation::Invalid(..)
+    ));
+    assert!(matches!(
+        validate_hostname(".abc").unwrap(),
+        Validation::Invalid(..)
+    ));
+    assert!(matches!(
+        validate_hostname(".abc.").unwrap(),
+        Validation::Invalid(..)
+    ));
 }
 
 #[test]
