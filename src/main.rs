@@ -1085,8 +1085,6 @@ fn test_hostname_validation() {
     assert!(matches!(validate_hostname("abc.").unwrap(), Validation::Invalid(..)));
     assert!(matches!(validate_hostname(".abc").unwrap(), Validation::Invalid(..)));
     assert!(matches!(validate_hostname(".abc.").unwrap(), Validation::Invalid(..)));
-
-
 }
 
 #[test]
