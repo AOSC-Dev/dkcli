@@ -762,8 +762,12 @@ fn validate_hostname(input: &str) -> std::result::Result<Validation, Box<dyn Err
         }
     }
 
-    if input.ends_with('.') {
-        return Ok(Validation::Invalid("Hostname ends with '.'".into()));
+    for i in ['-', '.'] {
+        if input.ends_with(i) {
+            return Ok(Validation::Invalid(
+                format!("Hostname ends with '{}'", i).into(),
+            ));
+        }
     }
 
     let mut is_dot = false;
