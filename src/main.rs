@@ -778,6 +778,8 @@ fn validate_hostname(input: &str) -> std::result::Result<Validation, Box<dyn Err
             return Ok(Validation::Invalid(
                 fl!("hostname-illegal-double-dot").into(),
             ));
+        } else if is_dot {
+            is_dot = false;
         }
 
         if c == '.' {
@@ -1105,6 +1107,10 @@ fn test_hostname_validation() {
     assert!(matches!(
         validate_hostname(".abc").unwrap(),
         Validation::Invalid(..)
+    ));
+    assert!(matches!(
+        validate_hostname("a.b.c").unwrap(),
+        Validation::Valid
     ));
     assert!(matches!(
         validate_hostname(".abc.").unwrap(),
