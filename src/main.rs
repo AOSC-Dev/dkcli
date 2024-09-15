@@ -756,7 +756,7 @@ fn validate_hostname(input: &str) -> std::result::Result<Validation, Box<dyn Err
         ));
     }
 
-    for i in ['-', '.', '_'] {
+    for i in ['-', '.'] {
         if input.starts_with(i) {
             return Ok(Validation::Invalid(
                 fl!("hostname-illegal-starts-with", c = i.to_string()).into(),
@@ -764,7 +764,7 @@ fn validate_hostname(input: &str) -> std::result::Result<Validation, Box<dyn Err
         }
     }
 
-    for i in ['-', '.', '_'] {
+    for i in ['-', '.'] {
         if input.ends_with(i) {
             return Ok(Validation::Invalid(
                 fl!("hostname-illegal-ends-with", c = i.to_string()).into(),
@@ -786,7 +786,7 @@ fn validate_hostname(input: &str) -> std::result::Result<Validation, Box<dyn Err
             is_dot = true;
         }
 
-        if !c.is_ascii_alphanumeric() && c != '-' && c != '.' && c != '_' {
+        if !c.is_ascii_alphanumeric() && c != '-' && c != '.' {
             return Ok(Validation::Invalid(
                 fl!("hostname-illegal", c = c.to_string()).into(),
             ));
@@ -1073,7 +1073,7 @@ fn test_hostname_validation() {
     );
     assert!(matches!(
         validate_hostname("invalid_host").unwrap(),
-        Validation::Valid
+        Validation::Invalid(..)
     ));
     assert!(matches!(
         validate_hostname("-invalid").unwrap(),
@@ -1089,7 +1089,7 @@ fn test_hostname_validation() {
     ));
     assert!(matches!(
         validate_hostname("Jelly_Dimension").unwrap(),
-        Validation::Valid
+        Validation::Invalid(..)
     ));
     assert_eq!(validate_hostname("AOSC.OS").unwrap(), Validation::Valid);
     assert!(matches!(
@@ -1131,3 +1131,4 @@ fn test_username_validation() {
         Validation::Invalid(..)
     ));
 }
+/
