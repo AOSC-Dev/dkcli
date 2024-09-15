@@ -751,13 +751,13 @@ fn locales() -> Result<Vec<Locale>> {
 
 fn validate_hostname(input: &str) -> std::result::Result<Validation, Box<dyn Error + Send + Sync>> {
     if input.len() > 64 {
-        return Ok(Validation::Invalid("Hostname too loong.".into()));
+        return Ok(Validation::Invalid(fl!("hostname-illegal-too-loong").into()));
     }
 
     for i in ['-', '.', '_'] {
         if input.starts_with(i) {
             return Ok(Validation::Invalid(
-                fl!("hostname-illegal-startswith", c = i.to_string()).into(),
+                fl!("hostname-illegal-starts-with", c = i.to_string()).into(),
             ));
         }
     }
@@ -765,7 +765,7 @@ fn validate_hostname(input: &str) -> std::result::Result<Validation, Box<dyn Err
     for i in ['-', '.', '_'] {
         if input.ends_with(i) {
             return Ok(Validation::Invalid(
-                format!("Hostname ends with '{}'", i).into(),
+                fl!("hostname-illegal-ends-with", c = i.to_string()).into(),
             ));
         }
     }
@@ -773,7 +773,7 @@ fn validate_hostname(input: &str) -> std::result::Result<Validation, Box<dyn Err
     let mut is_dot = false;
     for c in input.chars() {
         if c == '.' && is_dot {
-            return Ok(Validation::Invalid("Hostname contains '..".into()));
+            return Ok(Validation::Invalid(fl!("hostname-illegal-double-dot").into()));
         }
 
         if c == '.' {
