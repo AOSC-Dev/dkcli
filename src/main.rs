@@ -125,7 +125,7 @@ struct Device {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 struct Squashfs {
     arch: String,
-    data: Option<String>,
+    date: Option<String>,
     #[serde(rename = "downloadSize")]
     download_size: u64,
     #[serde(rename = "instSize")]
@@ -1002,7 +1002,7 @@ fn candidate_sqfs(variant: &Variant) -> Result<&Squashfs> {
         .iter()
         .filter(|x| get_arch_name().map(|arch| arch == x.arch).unwrap_or(false))
         .collect::<Vec<_>>();
-    sqfs.sort_unstable_by(|a, b| b.data.cmp(&a.data));
+    sqfs.sort_unstable_by(|a, b| b.date.cmp(&a.date));
     let sqfs = sqfs.first().context(fl!("squashfs-empty"))?;
 
     Ok(sqfs)
