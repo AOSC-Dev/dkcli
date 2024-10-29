@@ -125,7 +125,7 @@ struct Device {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 struct Squashfs {
     arch: String,
-    date: Option<String>,
+    date: String,
     #[serde(rename = "downloadSize")]
     download_size: u64,
     #[serde(rename = "instSize")]
