@@ -1,6 +1,8 @@
 dkcli
 ===
 
+[![codecov](https://codecov.io/github/AOSC-Dev/dkcli/graph/badge.svg?token=Y582CZVX2U)](https://codecov.io/github/AOSC-Dev/dkcli)
+
 Command-line installer for AOSC OS with a prompt-based interface.
 
 Usage
