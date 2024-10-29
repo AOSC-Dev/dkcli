@@ -799,7 +799,7 @@ fn validate_hostname(input: &str) -> std::result::Result<Validation, Box<dyn Err
 // https://manpages.ubuntu.com/manpages/oracular/en/man5/hostname.5.html
 fn validate_username(input: &str) -> std::result::Result<Validation, Box<dyn Error + Send + Sync>> {
     for i in input.chars() {
-        if !i.is_ascii_lowercase() && !i.is_ascii_alphanumeric() {
+        if !i.is_ascii_lowercase() && !i.is_ascii_digit() {
             return Ok(Validation::Invalid(
                 fl!("username-illegal", c = i.to_string()).into(),
             ));
