@@ -56,3 +56,7 @@ hostname-required = 需设置有效主机名。
 username-required = 需设置有效 UNIX 用户名。
 yn-confirm-required = 请确认操作：按 'Y' 确认，按 'N' 中止操作。
 installation-aborted = 已中止安装。
+hostname-illegal-ends-with = 指定的主机名以无效字符结尾：{ $c }
+hostname-illegal-too-loong = 指定的主机名过长。
+hostname-illegal-starts-with = 指定的主机名包含无效字符：{ $c }
+hostname-illegal-double-dot = 指定的主机名包含不允许存在的字符组合：两个或更多连续的点 (`..')。
