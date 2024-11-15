@@ -42,6 +42,7 @@ swap-size = 虚拟内存文件 (swapfile) 大小 (GiB)
 hostname-illegal = 指定的主机名中包含无效字符：{ $c }
 hostname-illegal-startswith = 指定的主机名以无效字符字符开头：{ $c }
 username-illegal = 指定的 UNIX 用户名中包含无效字符：{ $c }
+username-illegal-starts-with-number = 指定的 UNIX 用户名中开头不能是数字。
 fullname-illegal = 指定的用户全名中包含无效字符：':'
 squashfs-empty = 系统发行元数据文件中未包含 `squashfs'，该元数据文件可能已损坏。
 confirm-password = 确认密码

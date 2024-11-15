@@ -41,6 +41,7 @@ rtc-as-localtime = Would you like to use RTC (hardware clock) as local time?
 swap-size = Size of the swapfile (GiB)
 hostname-illegal = The specified hostname contains invalid character(s): { $c }
 username-illegal = The specified username contains invalid character(s): { $c }
+username-illegal-starts-with-number = The specified UNIX user name cannot begin with a number.
 hostname-illegal-starts-with = The specified hostname starts with invalid character(s): { $c }
 hostname-illegal-ends-with = The specified hostname ends with invalid character(s): { $c }
 hostname-illegal-too-loong = The specified hostname is too long.
