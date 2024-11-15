@@ -749,6 +749,7 @@ fn locales() -> Result<Vec<Locale>> {
     Ok(locales)
 }
 
+// https://manpages.ubuntu.com/manpages/oracular/en/man5/hostname.5.html
 fn validate_hostname(input: &str) -> std::result::Result<Validation, Box<dyn Error + Send + Sync>> {
     if input.len() > 64 {
         return Ok(Validation::Invalid(
@@ -796,8 +797,13 @@ fn validate_hostname(input: &str) -> std::result::Result<Validation, Box<dyn Err
     Ok(Validation::Valid)
 }
 
-// https://manpages.ubuntu.com/manpages/oracular/en/man5/hostname.5.html
 fn validate_username(input: &str) -> std::result::Result<Validation, Box<dyn Error + Send + Sync>> {
+    if input.starts_with(|x: char| x.is_ascii_digit()) {
+        return Ok(Validation::Invalid(
+            fl!("username-illegal-starts-with-number").into(),
+        ));
+    }
+
     for i in input.chars() {
         if !i.is_ascii_lowercase() && !i.is_ascii_digit() {
             return Ok(Validation::Invalid(
@@ -1128,6 +1134,10 @@ fn test_username_validation() {
     ));
     assert!(matches!(
         validate_username("BAIMINGCONG").unwrap(),
+        Validation::Invalid(..)
+    ));
+    assert!(matches!(
+        validate_username("123bai").unwrap(),
         Validation::Invalid(..)
     ));
 }
