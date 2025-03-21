@@ -489,7 +489,9 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         recipe
             .variants
             .iter()
-            .filter(|x| !x.retro && x.name.to_lowercase() != "buildkit")
+            .filter(|x| {
+                !x.retro && x.name.to_lowercase() != "buildkit" && x.name.to_lowercase() != "wsl"
+            })
             .map(|x| x.name.to_string())
             .collect::<Vec<_>>(),
     )
