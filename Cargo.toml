@@ -1,7 +1,7 @@
 [package]
 name = "dkcli"
 version = "0.4.4"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 tokio = { version = "1.40.0", features = ["rt-multi-thread"] }

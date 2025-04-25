@@ -11,24 +11,23 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::Parser;
 use i18n::LANGUAGE_LOADER;
 use i18n_embed::DesktopLanguageRequester;
 use indicatif::{HumanBytes, ProgressBar, ProgressStyle};
 use inquire::{
-    required,
+    Confirm, CustomType, Password, PasswordDisplayMode, Select, Text, required,
     validator::{ErrorMessage, Validation},
-    Confirm, CustomType, Password, PasswordDisplayMode, Select, Text,
 };
-use log::{debug, info, LevelFilter};
+use log::{LevelFilter, debug, info};
 use parser::list_zoneinfo;
 use reqwest::ClientBuilder;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use simplelog::{ColorChoice, ConfigBuilder, TermLogger, TerminalMode};
 use tokio::{runtime::Runtime, time::sleep};
-use zbus::{proxy, Connection, Result as zResult};
+use zbus::{Connection, Result as zResult, proxy};
 
 const LOCALE_LIST: &str = include_str!("../lang_select.json");
 const OFFLINE_RECIPE_PATH: &str = "/run/livekit/livemnt/manifest/recipe.json";

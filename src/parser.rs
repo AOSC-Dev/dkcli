@@ -1,14 +1,14 @@
 use std::fs;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use nom::{
+    IResult, Parser,
     branch::alt,
     bytes::complete::{tag, take_until, take_while1},
     character::complete::multispace1,
     combinator::{map, map_res},
     multi::many0,
     sequence::{preceded, terminated},
-    IResult, Parser,
 };
 
 #[inline]
