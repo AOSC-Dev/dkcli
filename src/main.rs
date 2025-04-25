@@ -630,11 +630,16 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
 
     let default_username = get_default_username(&fullname);
 
-    let username = Text::new(&fl!("username"))
+    let username_prompt = fl!("username");
+    let mut username = Text::new(&username_prompt)
         .with_validator(required!(fl!("username-required")))
-        .with_validator(validate_username)
-        .with_default(&default_username)
-        .prompt()?;
+        .with_validator(validate_username);
+
+    if !default_username.is_empty() {
+        username = username.with_default(&default_username);
+    }
+
+    let username = username.prompt()?;
 
     let password = Password::new(&fl!("password"))
         .with_validator(required!(fl!("password-required")))
