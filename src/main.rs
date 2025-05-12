@@ -20,12 +20,12 @@ use inquire::{
     Confirm, CustomType, Password, PasswordDisplayMode, Select, Text, required,
     validator::{ErrorMessage, Validation},
 };
-use log::{LevelFilter, debug, info};
+use log::{Level, LevelFilter, debug, info};
 use parser::list_zoneinfo;
 use reqwest::ClientBuilder;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use simplelog::{ColorChoice, ConfigBuilder, TermLogger, TerminalMode};
+use simplelog::{Color, ColorChoice, ConfigBuilder, TermLogger, TerminalMode};
 use tokio::{runtime::Runtime, time::sleep};
 use zbus::{Connection, Result as zResult, proxy};
 
@@ -252,6 +252,7 @@ fn main() -> Result<()> {
         LevelFilter::Info,
         ConfigBuilder::default()
             .add_filter_ignore_str("i18n_embed")
+            .set_level_color(Level::Info, Some(Color::White))
             .build(),
         TerminalMode::Stderr,
         ColorChoice::Auto,
