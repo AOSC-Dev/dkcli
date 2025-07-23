@@ -9,7 +9,7 @@ anyhow = "1.0.87"
 zbus = { version = "5", default-features = false, features = ["tokio"] }
 serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
-indicatif = "0.17.8"
+indicatif = "0.18"
 inquire = "0.7.5"
 reqwest = { version = "0.12.7", features = ["json"] }
 simplelog = "0.12.2"
@@ -17,11 +17,11 @@ log = "0.4.22"
 nom = "8"
 ctrlc = "3.4.5"
 clap = { version = "4.5.17", features = ["derive"] }
-toml = "0.8"
+toml = "0.9"
 libc = "0.2.158"
 
 # i18n
-i18n-embed = { version = "0.15.0", features = ["fluent-system", "desktop-requester"]}
-i18n-embed-fl = "0.9.1"
+i18n-embed = { version = "0.16.0", features = ["fluent-system", "desktop-requester"]}
+i18n-embed-fl = "0.10"
 rust-embed = "8.5.0"
 unic-langid = "0.9.5"
