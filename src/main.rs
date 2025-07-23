@@ -238,7 +238,7 @@ fn main() -> Result<()> {
     let requested_languages = DesktopLanguageRequester::requested_languages();
 
     if let Err(error) = localizer.select(&requested_languages) {
-        eprintln!("Error while loading languages for library_fluent {}", error);
+        eprintln!("Error while loading languages for library_fluent {error}");
     }
 
     // Windows Terminal doesn't support bidirectional (BiDi) text, and renders the isolate characters incorrectly.
@@ -833,7 +833,7 @@ fn vaildation_fullname(
 }
 
 fn get_partition(partitions: &[DkPartition], partition: &str) -> DkPartition {
-    let partition = partitions
+    partitions
         .iter()
         .find(|x| {
             x.path
@@ -842,20 +842,16 @@ fn get_partition(partitions: &[DkPartition], partition: &str) -> DkPartition {
                 .unwrap_or(false)
         })
         .unwrap()
-        .to_owned();
-
-    partition
+        .to_owned()
 }
 
 fn get_variant(recipe: Recipe, variant: &str) -> Variant {
-    let variant = recipe
+    recipe
         .variants
         .iter()
         .find(|x| x.name == variant)
         .unwrap()
-        .to_owned();
-
-    variant
+        .to_owned()
 }
 
 async fn get_auto_partition_progress(
@@ -883,7 +879,7 @@ async fn get_auto_partition_progress(
                 pb.set_message(fl!("auto-partition-working"));
             }
             _ => {
-                debug!("Progress: {:?}", data);
+                debug!("Progress: {data:?}");
             }
         }
 
@@ -1060,19 +1056,19 @@ pub(crate) fn get_arch_name() -> Option<&'static str> {
 #[test]
 fn test_username() {
     let full_name = "Mag Mell";
-    let name = get_default_username(&full_name);
+    let name = get_default_username(full_name);
     assert_eq!("magmell", name);
 
     let full_name = "123test";
-    let name = get_default_username(&full_name);
+    let name = get_default_username(full_name);
     assert_eq!("test", name);
 
     let full_name = "123 45";
-    let name = get_default_username(&full_name);
+    let name = get_default_username(full_name);
     assert_eq!("", name);
 
     let full_name = "cth451";
-    let name = get_default_username(&full_name);
+    let name = get_default_username(full_name);
     assert_eq!("cth451", name);
 }
 
