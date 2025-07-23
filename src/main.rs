@@ -538,7 +538,7 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
         .with_error_message(&fl!("yn-confirm-required"))
         .prompt()?;
 
-    let (partition, efi) = if auto_partition {
+    let (mut partition, efi) = if auto_partition {
         runtime.block_on(Dbus::run(dk_client, DbusMethod::AutoPartition(&device)))?;
         runtime.block_on(get_auto_partition_progress(dk_client))?
     } else {
@@ -624,6 +624,23 @@ fn inquire(runtime: &Runtime, dk_client: &DeploykitProxy<'_>) -> Result<InstallC
 
         (partition, efi)
     };
+
+    if partition.fs_type.is_none() {
+        info!(
+            "{}",
+            fl!(
+                "partition-unformatted",
+                path = partition
+                    .parent_path
+                    .as_ref()
+                    .expect("parent path should exist")
+                    .to_string_lossy()
+                    .to_string()
+            )
+        );
+
+        partition.fs_type = Some("ext4".to_string());
+    }
 
     let fullname = Text::new(&fl!("fullname"))
         .with_validator(vaildation_fullname)
