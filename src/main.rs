@@ -822,16 +822,33 @@ fn validate_hostname(input: &str) -> std::result::Result<Validation, Box<dyn Err
 }
 
 fn validate_username(input: &str) -> std::result::Result<Validation, Box<dyn Error + Send + Sync>> {
-    if input.starts_with(|x: char| x.is_ascii_digit()) {
+    if input.is_empty() {
+        return Ok(Validation::Invalid(fl!("username-illegal", c = "").into()));
+    }
+
+    // Maximum 32 characters
+    if input.chars().count() > 32 {
+        return Ok(Validation::Invalid(fl!("username-illegal-too-long").into()));
+    }
+
+    // Must start with a lowercase letter (a-z) or underscore (_)
+    let first = input.chars().next().unwrap();
+    if first.is_ascii_digit() {
         return Ok(Validation::Invalid(
             fl!("username-illegal-starts-with-number").into(),
         ));
     }
+    if !first.is_ascii_lowercase() && first != '_' {
+        return Ok(Validation::Invalid(
+            fl!("username-illegal-starts-with", c = first.to_string()).into(),
+        ));
+    }
 
-    for i in input.chars() {
-        if !i.is_ascii_lowercase() && !i.is_ascii_digit() {
+    // Emaining characters: lowercase letters (a-z), digits (0-9), underscores (_), or hyphens (-)
+    for c in input.chars().skip(1) {
+        if !c.is_ascii_lowercase() && !c.is_ascii_digit() && c != '_' && c != '-' {
             return Ok(Validation::Invalid(
-                fl!("username-illegal", c = i.to_string()).into(),
+                fl!("username-illegal", c = c.to_string()).into(),
             ));
         }
     }
@@ -1148,6 +1165,9 @@ fn test_hostname_validation() {
 fn test_username_validation() {
     assert_eq!(validate_username("foo").unwrap(), Validation::Valid);
     assert_eq!(validate_username("cth451").unwrap(), Validation::Valid);
+    assert_eq!(validate_username("foo_bar").unwrap(), Validation::Valid);
+    assert_eq!(validate_username("foo-bar").unwrap(), Validation::Valid);
+    assert_eq!(validate_username("_foo").unwrap(), Validation::Valid);
     assert!(matches!(
         validate_username("老白").unwrap(),
         Validation::Invalid(..)
@@ -1158,6 +1178,14 @@ fn test_username_validation() {
     ));
     assert!(matches!(
         validate_username("123bai").unwrap(),
+        Validation::Invalid(..)
+    ));
+    assert!(matches!(
+        validate_username("-foobar").unwrap(),
+        Validation::Invalid(..)
+    ));
+    assert!(matches!(
+        validate_username(&"a".repeat(33)).unwrap(),
         Validation::Invalid(..)
     ));
 }
