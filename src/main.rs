@@ -413,15 +413,14 @@ fn from_config(
         }
     }
 
-    if let Some(fullname) = &config.fullname {
-        if let Ok(Validation::Invalid(e)) = vaildation_fullname(fullname) {
+    if let Some(fullname) = &config.fullname
+        && let Ok(Validation::Invalid(e)) = vaildation_fullname(fullname) {
             if let ErrorMessage::Custom(s) = e {
                 bail!("{}", fl!("invaild-fullname", e = s));
             } else {
                 unreachable!()
             }
         }
-    }
 
     if let Ok(Validation::Invalid(e)) = validate_username(&config.user) {
         if let ErrorMessage::Custom(s) = e {
